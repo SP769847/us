@@ -1,0 +1,378 @@
+// Prisma schema — written Postgres-compatible.
+// Dev default is SQLite (see .env DATABASE_URL="file:./dev.db") for zero-setup local runs.
+// To move to Postgres/Supabase: change `provider` below to "postgresql" and point
+// DATABASE_URL at your Supabase connection string, then re-run `npm run prisma:migrate`.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// SQLite has no native enum support in Prisma, so enums below are plain Strings
+// with values validated in the application layer (see src/utils/validators.js
+// and per-controller allow-lists). Values used:
+//   User.role: "USER" | "ADMIN"
+//   User.status: "ACTIVE" | "SUSPENDED"
+//   ConnectionRequest.status: "PENDING" | "ACCEPTED" | "DECLINED"
+//   Message.type: "TEXT" | "IMAGE" | "EMOJI" | "SYSTEM"
+//   Report.status: "PENDING" | "RESOLVED" | "DISMISSED"
+
+model User {
+  id           String   @id @default(uuid())
+  fullName     String
+  username     String   @unique
+  email        String   @unique
+  passwordHash String
+  avatarUrl    String?
+  bio          String?
+  role         String   @default("USER")
+  status       String   @default("ACTIVE")
+  lastSeenAt   DateTime @default(now())
+  isOnline     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sentRequests           ConnectionRequest[]  @relation("SentRequests")
+  receivedRequests       ConnectionRequest[]  @relation("ReceivedRequests")
+  connectionsA           Connection[]         @relation("ConnectionUserA")
+  connectionsB           Connection[]         @relation("ConnectionUserB")
+  blocksInitiated        BlockedUser[]        @relation("Blocker")
+  blocksReceived         BlockedUser[]        @relation("Blocked")
+  reportsFiled           Report[]             @relation("ReportedBy")
+  reportsAgainst         Report[]             @relation("ReportedUser")
+  conversationMembers    ConversationMember[]
+  messagesSent           Message[]            @relation("MessageSender")
+  messageReactions       MessageReaction[]
+  messagePins            MessagePin[]
+  loveNotesSent          LoveNote[]           @relation("LoveNoteSender")
+  loveNotesReceived      LoveNote[]           @relation("LoveNoteRecipient")
+  secretMessagesSent     SecretMessage[]      @relation("SecretSender")
+  secretMessagesReceived SecretMessage[]      @relation("SecretRecipient")
+  dailyQuestionAnswers   QuestionAnswer[]
+  challengesSent         Challenge[]          @relation("ChallengeSender")
+  challengesReceived     Challenge[]          @relation("ChallengeRecipient")
+  challengeResponses     ChallengeResponse[]
+  gameSessions           GameSession[]        @relation("GameInitiator")
+  memories               Memory[]
+  timelineEvents         TimelineEvent[]
+  specialDates           SpecialDate[]
+  notifications          Notification[]       @relation("NotificationRecipient")
+  passwordResetTokens    PasswordResetToken[]
+
+  @@index([username])
+  @@index([email])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model ConnectionRequest {
+  id          String   @id @default(uuid())
+  senderId    String
+  recipientId String
+  status      String   @default("PENDING")
+  message     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  sender    User @relation("SentRequests", fields: [senderId], references: [id], onDelete: Cascade)
+  recipient User @relation("ReceivedRequests", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@unique([senderId, recipientId])
+  @@index([recipientId])
+}
+
+model Connection {
+  id        String   @id @default(uuid())
+  userAId   String
+  userBId   String
+  createdAt DateTime @default(now())
+
+  userA User @relation("ConnectionUserA", fields: [userAId], references: [id], onDelete: Cascade)
+  userB User @relation("ConnectionUserB", fields: [userBId], references: [id], onDelete: Cascade)
+
+  conversation Conversation?
+
+  @@unique([userAId, userBId])
+  @@index([userAId])
+  @@index([userBId])
+}
+
+model BlockedUser {
+  id        String   @id @default(uuid())
+  blockerId String
+  blockedId String
+  reason    String?
+  createdAt DateTime @default(now())
+
+  blocker User @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked User @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+  @@index([blockedId])
+}
+
+model Report {
+  id             String    @id @default(uuid())
+  reporterId     String
+  reportedId     String
+  reason         String
+  details        String?
+  status         String    @default("PENDING")
+  resolutionNote String?
+  createdAt      DateTime  @default(now())
+  resolvedAt     DateTime?
+
+  reporter User @relation("ReportedBy", fields: [reporterId], references: [id], onDelete: Cascade)
+  reported User @relation("ReportedUser", fields: [reportedId], references: [id], onDelete: Cascade)
+
+  @@index([reportedId])
+  @@index([status])
+}
+
+model Conversation {
+  id           String   @id @default(uuid())
+  connectionId String   @unique
+  createdAt    DateTime @default(now())
+
+  connection Connection           @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  members    ConversationMember[]
+  messages   Message[]
+}
+
+model ConversationMember {
+  id             String    @id @default(uuid())
+  conversationId String
+  userId         String
+  lastReadAt     DateTime?
+  joinedAt       DateTime  @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+}
+
+model Message {
+  id             String    @id @default(uuid())
+  conversationId String
+  senderId       String
+  type           String    @default("TEXT")
+  content        String?
+  attachmentUrl  String?
+  replyToId      String?
+  isDeleted      Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  readAt         DateTime?
+
+  conversation Conversation      @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User              @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  replyTo      Message?          @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies      Message[]         @relation("MessageReplies")
+  reactions    MessageReaction[]
+  pins         MessagePin[]
+
+  @@index([conversationId, createdAt])
+}
+
+model MessageReaction {
+  id        String   @id @default(uuid())
+  messageId String
+  userId    String
+  emoji     String
+  createdAt DateTime @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, emoji])
+}
+
+model MessagePin {
+  id         String   @id @default(uuid())
+  messageId  String
+  pinnedById String
+  createdAt  DateTime @default(now())
+
+  message  Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  pinnedBy User    @relation(fields: [pinnedById], references: [id], onDelete: Cascade)
+
+  @@unique([messageId])
+}
+
+model LoveNote {
+  id          String    @id @default(uuid())
+  senderId    String
+  recipientId String
+  kind        String    @default("LOVE_NOTE") // LOVE_NOTE | READ_THIS_WHEN
+  category    String? // for READ_THIS_WHEN: SAD, MISS_ME, ANGRY, CANT_SLEEP, NEED_LOVE, MOTIVATION, CUSTOM
+  title       String
+  message     String
+  imageUrl    String?
+  unlockAt    DateTime?
+  createdAt   DateTime  @default(now())
+
+  sender    User @relation("LoveNoteSender", fields: [senderId], references: [id], onDelete: Cascade)
+  recipient User @relation("LoveNoteRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@index([recipientId])
+}
+
+model SecretMessage {
+  id           String    @id @default(uuid())
+  senderId     String
+  recipientId  String
+  content      String
+  passcodeHash String?
+  unlockAt     DateTime?
+  openedAt     DateTime?
+  createdAt    DateTime  @default(now())
+
+  sender    User @relation("SecretSender", fields: [senderId], references: [id], onDelete: Cascade)
+  recipient User @relation("SecretRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@index([recipientId])
+}
+
+model DailyQuestion {
+  id        String   @id @default(uuid())
+  prompt    String
+  category  String?
+  createdAt DateTime @default(now())
+
+  answers QuestionAnswer[]
+}
+
+model QuestionAnswer {
+  id               String   @id @default(uuid())
+  questionId       String
+  userId           String
+  answer           String
+  sharedWithUserId String?
+  createdAt        DateTime @default(now())
+
+  question DailyQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Challenge {
+  id          String   @id @default(uuid())
+  senderId    String
+  recipientId String
+  prompt      String
+  status      String   @default("PENDING") // PENDING, ACCEPTED, COMPLETED, DECLINED
+  createdAt   DateTime @default(now())
+
+  sender    User                @relation("ChallengeSender", fields: [senderId], references: [id], onDelete: Cascade)
+  recipient User                @relation("ChallengeRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  responses ChallengeResponse[]
+
+  @@index([recipientId])
+}
+
+model ChallengeResponse {
+  id          String   @id @default(uuid())
+  challengeId String
+  userId      String
+  response    String
+  createdAt   DateTime @default(now())
+
+  challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model GameSession {
+  id           String    @id @default(uuid())
+  initiatorId  String
+  connectionId String
+  gameType     String // THIS_OR_THAT, WOULD_YOU_RATHER, WHO_KNOWS_ME_BETTER, TRUTH_OR_DARE
+  payload      String // JSON blob: prompt, options, answers
+  status       String    @default("ACTIVE") // ACTIVE, COMPLETED
+  createdAt    DateTime  @default(now())
+  completedAt  DateTime?
+
+  initiator User @relation("GameInitiator", fields: [initiatorId], references: [id], onDelete: Cascade)
+
+  @@index([connectionId])
+}
+
+model Memory {
+  id           String   @id @default(uuid())
+  userId       String
+  connectionId String?
+  title        String
+  description  String?
+  location     String?
+  eventDate    DateTime
+  photos       String? // JSON array of URLs
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([connectionId])
+}
+
+model TimelineEvent {
+  id            String   @id @default(uuid())
+  userId        String
+  connectionId  String?
+  title         String
+  description   String?
+  eventDate     DateTime
+  imageUrl      String?
+  milestoneType String? // FIRST_CONVERSATION, FIRST_MEETING, FIRST_DATE, ANNIVERSARY, BIRTHDAY, CUSTOM
+  createdAt     DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([connectionId])
+}
+
+model SpecialDate {
+  id                String   @id @default(uuid())
+  userId            String
+  connectionId      String?
+  title             String
+  date              DateTime
+  isRecurringYearly Boolean  @default(false)
+  createdAt         DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Notification {
+  id          String   @id @default(uuid())
+  recipientId String
+  type        String // CONNECTION_REQUEST, CONNECTION_ACCEPTED, NEW_MESSAGE, NEW_LOVE_NOTE, NEW_SECRET_MESSAGE, CHALLENGE_RECEIVED, MEMORY_SHARED
+  title       String
+  body        String?
+  data        String? // JSON blob with related IDs
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  recipient User @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@index([recipientId, isRead])
+}

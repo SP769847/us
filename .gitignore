@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Environment files (never commit secrets)
+.env
+.env.local
+.env.*.local
+
+# Backend
+backend/prisma/dev.db
+backend/prisma/dev.db-journal
+backend/uploads/**
+!backend/uploads/**/
+!backend/uploads/**/.gitkeep
+
+# Frontend build output
+frontend/dist/
+frontend/dist-ssr/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor/OS
+.DS_Store
+.vscode/
+.idea/
+Thumbs.db

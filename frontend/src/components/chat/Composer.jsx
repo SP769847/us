@@ -1,0 +1,100 @@
+import { useRef, useState } from 'react';
+
+const QUICK_EMOJI = ['❤️', '😂', '🥰', '😮', '😢', '👍', '🔥', '✨'];
+
+export default function Composer({ onSend, onTyping, replyTo, onCancelReply }) {
+  const [text, setText] = useState('');
+  const [showEmoji, setShowEmoji] = useState(false);
+  const fileRef = useRef(null);
+  const typingTimeout = useRef(null);
+
+  const handleChange = (e) => {
+    setText(e.target.value);
+    onTyping?.(true);
+    clearTimeout(typingTimeout.current);
+    typingTimeout.current = setTimeout(() => onTyping?.(false), 1200);
+  };
+
+  const submit = (e) => {
+    e?.preventDefault();
+    if (!text.trim()) return;
+    onSend({ content: text.trim(), replyToId: replyTo?.id });
+    setText('');
+    onTyping?.(false);
+  };
+
+  const onFile = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      onSend({ file, replyToId: replyTo?.id });
+      e.target.value = '';
+    }
+  };
+
+  return (
+    <div className="border-t border-white/5 p-3 sm:p-4 shrink-0">
+      {replyTo && (
+        <div className="flex items-center justify-between bg-white/5 rounded-xl px-3 py-2 mb-2 text-xs text-white/50">
+          <span className="truncate">Replying to: {replyTo.content?.slice(0, 60) || 'a photo'}</span>
+          <button onClick={onCancelReply} className="text-white/40 hover:text-white ml-2">
+            &times;
+          </button>
+        </div>
+      )}
+      <form onSubmit={submit} className="flex items-end gap-2 relative">
+        {showEmoji && (
+          <div className="absolute bottom-full mb-2 left-0 bg-ink-900 border border-white/10 rounded-2xl p-2 flex gap-1 shadow-soft">
+            {QUICK_EMOJI.map((e) => (
+              <button
+                key={e}
+                type="button"
+                onClick={() => {
+                  setText((t) => t + e);
+                  setShowEmoji(false);
+                }}
+                className="text-lg hover:scale-125 transition-transform"
+              >
+                {e}
+              </button>
+            ))}
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          className="w-10 h-10 shrink-0 rounded-full flex items-center justify-center text-white/50 hover:text-white hover:bg-white/8 transition-colors"
+          aria-label="Attach image"
+        >
+          📎
+        </button>
+        <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onFile} />
+        <button
+          type="button"
+          onClick={() => setShowEmoji((v) => !v)}
+          className="w-10 h-10 shrink-0 rounded-full flex items-center justify-center text-white/50 hover:text-white hover:bg-white/8 transition-colors"
+          aria-label="Emoji"
+        >
+          😊
+        </button>
+        <textarea
+          rows={1}
+          value={text}
+          onChange={handleChange}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) submit(e);
+          }}
+          placeholder="Write something sweet…"
+          className="flex-1 bg-white/5 border border-white/10 rounded-2xl px-4 py-2.5 text-sm resize-none outline-none focus:border-blush-400/50 max-h-32"
+        />
+        <button
+          type="submit"
+          disabled={!text.trim()}
+          className="w-10 h-10 shrink-0 rounded-full bg-gradient-to-br from-blush-500 to-plum-500 flex items-center justify-center text-white disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+          aria-label="Send"
+        >
+          ➤
+        </button>
+      </form>
+    </div>
+  );
+}
