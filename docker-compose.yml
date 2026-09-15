@@ -1,16 +1,17 @@
 services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: us-postgres
+  mysql:
+    image: mysql:8.0
+    container_name: us-mysql
     restart: unless-stopped
     environment:
-      POSTGRES_USER: us
-      POSTGRES_PASSWORD: us_local_dev
-      POSTGRES_DB: us_dev
+      MYSQL_ROOT_PASSWORD: us_local_dev
+      MYSQL_DATABASE: us_dev
+      MYSQL_USER: us
+      MYSQL_PASSWORD: us_local_dev
     ports:
-      - "5432:5432"
+      - "3306:3306"
     volumes:
-      - us_postgres_data:/var/lib/postgresql/data
+      - us_mysql_data:/var/lib/mysql
 
 volumes:
-  us_postgres_data:
+  us_mysql_data:

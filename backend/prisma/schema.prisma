@@ -1,14 +1,22 @@
-// Prisma schema — PostgreSQL (Render/Supabase). For local dev without a hosted
-// DB, run `docker compose up -d` at the repo root for a local Postgres instance
-// (see backend/.env.example for the matching DATABASE_URL).
+// Prisma schema — MySQL wire protocol (TiDB Cloud / MySQL / PlanetScale-compatible).
+// For local dev without a hosted DB, run `docker compose up -d` at the repo root
+// for a local MySQL instance (see backend/.env.example for the matching DATABASE_URL).
+//
+// relationMode = "prisma" makes Prisma enforce referential actions (cascades,
+// etc.) at the query-engine level instead of relying on native DB foreign key
+// constraints. This is the standard, Prisma-recommended setting for
+// TiDB/PlanetScale-style distributed MySQL databases. It requires an index on
+// every relation scalar field that doesn't already have one as the leftmost
+// column of another index — all such fields below are indexed accordingly.
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider     = "mysql"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma"
 }
 
 // Enums are plain Strings validated in the application layer (see
@@ -28,7 +36,7 @@ model User {
   email        String   @unique
   passwordHash String
   avatarUrl    String?
-  bio          String?
+  bio          String?  @db.Text
   role         String   @default("USER")
   status       String   @default("ACTIVE")
   lastSeenAt   DateTime @default(now())
@@ -85,7 +93,7 @@ model ConnectionRequest {
   senderId    String
   recipientId String
   status      String   @default("PENDING")
-  message     String?
+  message     String?  @db.Text
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -116,7 +124,7 @@ model BlockedUser {
   id        String   @id @default(uuid())
   blockerId String
   blockedId String
-  reason    String?
+  reason    String?  @db.Text
   createdAt DateTime @default(now())
 
   blocker User @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
@@ -131,15 +139,16 @@ model Report {
   reporterId     String
   reportedId     String
   reason         String
-  details        String?
+  details        String?   @db.Text
   status         String    @default("PENDING")
-  resolutionNote String?
+  resolutionNote String?   @db.Text
   createdAt      DateTime  @default(now())
   resolvedAt     DateTime?
 
   reporter User @relation("ReportedBy", fields: [reporterId], references: [id], onDelete: Cascade)
   reported User @relation("ReportedUser", fields: [reportedId], references: [id], onDelete: Cascade)
 
+  @@index([reporterId])
   @@index([reportedId])
   @@index([status])
 }
@@ -173,7 +182,7 @@ model Message {
   conversationId String
   senderId       String
   type           String    @default("TEXT")
-  content        String?
+  content        String?   @db.Text
   attachmentUrl  String?
   replyToId      String?
   isDeleted      Boolean   @default(false)
@@ -182,12 +191,14 @@ model Message {
 
   conversation Conversation      @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   sender       User              @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
-  replyTo      Message?          @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replyTo      Message?          @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   replies      Message[]         @relation("MessageReplies")
   reactions    MessageReaction[]
   pins         MessagePin[]
 
   @@index([conversationId, createdAt])
+  @@index([senderId])
+  @@index([replyToId])
 }
 
 model MessageReaction {
@@ -201,6 +212,7 @@ model MessageReaction {
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([messageId, userId, emoji])
+  @@index([userId])
 }
 
 model MessagePin {
@@ -213,6 +225,7 @@ model MessagePin {
   pinnedBy User    @relation(fields: [pinnedById], references: [id], onDelete: Cascade)
 
   @@unique([messageId])
+  @@index([pinnedById])
 }
 
 model LoveNote {
@@ -222,7 +235,7 @@ model LoveNote {
   kind        String    @default("LOVE_NOTE") // LOVE_NOTE | READ_THIS_WHEN
   category    String? // for READ_THIS_WHEN: SAD, MISS_ME, ANGRY, CANT_SLEEP, NEED_LOVE, MOTIVATION, CUSTOM
   title       String
-  message     String
+  message     String    @db.Text
   imageUrl    String?
   unlockAt    DateTime?
   createdAt   DateTime  @default(now())
@@ -230,6 +243,7 @@ model LoveNote {
   sender    User @relation("LoveNoteSender", fields: [senderId], references: [id], onDelete: Cascade)
   recipient User @relation("LoveNoteRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
 
+  @@index([senderId])
   @@index([recipientId])
 }
 
@@ -237,7 +251,7 @@ model SecretMessage {
   id           String    @id @default(uuid())
   senderId     String
   recipientId  String
-  content      String
+  content      String    @db.Text
   passcodeHash String?
   unlockAt     DateTime?
   openedAt     DateTime?
@@ -246,6 +260,7 @@ model SecretMessage {
   sender    User @relation("SecretSender", fields: [senderId], references: [id], onDelete: Cascade)
   recipient User @relation("SecretRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
 
+  @@index([senderId])
   @@index([recipientId])
 }
 
@@ -262,21 +277,23 @@ model QuestionAnswer {
   id               String   @id @default(uuid())
   questionId       String
   userId           String
-  answer           String
+  answer           String   @db.Text
   sharedWithUserId String?
   createdAt        DateTime @default(now())
 
   question DailyQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
   user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([questionId])
   @@index([userId])
+  @@index([sharedWithUserId])
 }
 
 model Challenge {
   id          String   @id @default(uuid())
   senderId    String
   recipientId String
-  prompt      String
+  prompt      String   @db.Text
   status      String   @default("PENDING") // PENDING, ACCEPTED, COMPLETED, DECLINED
   createdAt   DateTime @default(now())
 
@@ -284,6 +301,7 @@ model Challenge {
   recipient User                @relation("ChallengeRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
   responses ChallengeResponse[]
 
+  @@index([senderId])
   @@index([recipientId])
 }
 
@@ -291,11 +309,14 @@ model ChallengeResponse {
   id          String   @id @default(uuid())
   challengeId String
   userId      String
-  response    String
+  response    String   @db.Text
   createdAt   DateTime @default(now())
 
   challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([challengeId])
+  @@index([userId])
 }
 
 model GameSession {
@@ -303,13 +324,14 @@ model GameSession {
   initiatorId  String
   connectionId String
   gameType     String // THIS_OR_THAT, WOULD_YOU_RATHER, WHO_KNOWS_ME_BETTER, TRUTH_OR_DARE
-  payload      String // JSON blob: prompt, options, answers
+  payload      String    @db.Text // JSON blob: prompt, options, answers
   status       String    @default("ACTIVE") // ACTIVE, COMPLETED
   createdAt    DateTime  @default(now())
   completedAt  DateTime?
 
   initiator User @relation("GameInitiator", fields: [initiatorId], references: [id], onDelete: Cascade)
 
+  @@index([initiatorId])
   @@index([connectionId])
 }
 
@@ -318,10 +340,10 @@ model Memory {
   userId       String
   connectionId String?
   title        String
-  description  String?
+  description  String?  @db.Text
   location     String?
   eventDate    DateTime
-  photos       String? // JSON array of URLs
+  photos       String?  @db.Text // JSON array of URLs
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -336,7 +358,7 @@ model TimelineEvent {
   userId        String
   connectionId  String?
   title         String
-  description   String?
+  description   String?  @db.Text
   eventDate     DateTime
   imageUrl      String?
   milestoneType String? // FIRST_CONVERSATION, FIRST_MEETING, FIRST_DATE, ANNIVERSARY, BIRTHDAY, CUSTOM
@@ -367,8 +389,8 @@ model Notification {
   recipientId String
   type        String // CONNECTION_REQUEST, CONNECTION_ACCEPTED, NEW_MESSAGE, NEW_LOVE_NOTE, NEW_SECRET_MESSAGE, CHALLENGE_RECEIVED, MEMORY_SHARED
   title       String
-  body        String?
-  data        String? // JSON blob with related IDs
+  body        String?  @db.Text
+  data        String?  @db.Text // JSON blob with related IDs
   isRead      Boolean  @default(false)
   createdAt   DateTime @default(now())
 

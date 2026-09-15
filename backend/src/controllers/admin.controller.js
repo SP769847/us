@@ -22,13 +22,14 @@ export const getStats = asyncHandler(async (req, res) => {
 export const listUsers = asyncHandler(async (req, res) => {
   const q = String(req.query.q || '').trim();
   const users = await prisma.user.findMany({
+    // Note: MySQL/TiDB's `contains` case-sensitivity depends on the column's
+    // collation (Prisma's "mode" filter argument is Postgres/Mongo-only and
+    // is not valid here). Default TiDB collations are usually case-insensitive;
+    // if this ever behaves case-sensitively, alter the column collation to a
+    // `_ci` one rather than trying to pass `mode` here.
     where: q
       ? {
-          OR: [
-            { username: { contains: q, mode: 'insensitive' } },
-            { email: { contains: q, mode: 'insensitive' } },
-            { fullName: { contains: q, mode: 'insensitive' } },
-          ],
+          OR: [{ username: { contains: q } }, { email: { contains: q } }, { fullName: { contains: q } }],
         }
       : undefined,
     orderBy: { createdAt: 'desc' },

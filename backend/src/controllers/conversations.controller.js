@@ -87,7 +87,7 @@ export const searchConversationMessages = asyncHandler(async (req, res) => {
       conversationId: req.params.id,
       isDeleted: false,
       type: 'TEXT',
-      content: { contains: q, mode: 'insensitive' },
+      content: { contains: q },
     },
     include: { sender: true },
     orderBy: { createdAt: 'desc' },
