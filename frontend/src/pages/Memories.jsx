@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import api, { extractErrorMessage } from '../services/api.js';
+import { mediaUrl } from '../utils/media.js';
 import { Input, Textarea } from '../components/ui/Input.jsx';
 import Button from '../components/ui/Button.jsx';
 import Modal from '../components/ui/Modal.jsx';
@@ -75,7 +76,7 @@ export default function Memories() {
               className="glass rounded-2xl overflow-hidden text-left hover:bg-white/[0.06] transition-colors"
             >
               {m.photos[0] ? (
-                <img src={m.photos[0]} alt="" className="w-full h-36 object-cover" />
+                <img src={mediaUrl(m.photos[0])} alt="" className="w-full h-36 object-cover" />
               ) : (
                 <div className="w-full h-36 bg-gradient-to-br from-blush-500/15 to-plum-500/15 flex items-center justify-center text-3xl">
                   📸
@@ -119,7 +120,7 @@ export default function Memories() {
             {viewMemory.photos.length > 0 && (
               <div className="flex gap-2 overflow-x-auto mb-4 -mx-1 px-1 scrollbar-none">
                 {viewMemory.photos.map((p, i) => (
-                  <img key={i} src={p} alt="" className="h-40 rounded-xl object-cover shrink-0" />
+                  <img key={i} src={mediaUrl(p)} alt="" className="h-40 rounded-xl object-cover shrink-0" />
                 ))}
               </div>
             )}

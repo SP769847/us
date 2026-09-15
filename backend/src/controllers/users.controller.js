@@ -26,8 +26,8 @@ export const discoverUsers = asyncHandler(async (req, res) => {
       ...(q
         ? {
             OR: [
-              { username: { contains: q } },
-              { fullName: { contains: q } },
+              { username: { contains: q, mode: 'insensitive' } },
+              { fullName: { contains: q, mode: 'insensitive' } },
             ],
           }
         : {}),

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { mediaUrl } from '../../utils/media.js';
 
 const REACTIONS = ['❤️', '😂', '🥰', '😮', '😢', '👍'];
 
@@ -39,7 +40,7 @@ export default function MessageBubble({ message, isMine, myId, onReact, onDelete
           </div>
         ) : message.type === 'IMAGE' ? (
           <img
-            src={message.attachmentUrl}
+            src={mediaUrl(message.attachmentUrl)}
             alt="Shared"
             className="max-w-full rounded-2xl border border-white/10 max-h-72 object-cover"
           />

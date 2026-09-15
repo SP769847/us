@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import api, { extractErrorMessage } from '../services/api.js';
+import { mediaUrl } from '../utils/media.js';
 import { useConnections } from '../hooks/useConnections.js';
 import ConnectionPicker from '../components/ConnectionPicker.jsx';
 import { Input, Textarea } from '../components/ui/Input.jsx';
@@ -123,7 +124,7 @@ export default function LoveNotes() {
               <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}>
                 <div className="text-3xl mb-3">💌</div>
                 <h3 className="font-display text-xl mb-3">{viewNote.title}</h3>
-                {viewNote.imageUrl && <img src={viewNote.imageUrl} className="rounded-xl mb-3 max-h-56 mx-auto" alt="" />}
+                {viewNote.imageUrl && <img src={mediaUrl(viewNote.imageUrl)} className="rounded-xl mb-3 max-h-56 mx-auto" alt="" />}
                 <p className="text-sm text-white/70 whitespace-pre-wrap leading-relaxed">{viewNote.message}</p>
               </motion.div>
             )}

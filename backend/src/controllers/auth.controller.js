@@ -7,10 +7,15 @@ import { signToken } from '../utils/jwt.js';
 import { isValidEmail, isValidUsername, isStrongPassword, sanitizeText } from '../utils/validators.js';
 import { privateUser } from '../utils/serializers.js';
 
+// In production the frontend (Vercel) and backend (Render) live on different
+// domains, so the auth cookie must be sameSite:"none" to be sent cross-site —
+// that requires secure:true (HTTPS only), which both hosts provide by default.
+// Locally, frontend and backend share localhost so "lax" + non-secure works.
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 const COOKIE_OPTIONS = {
   httpOnly: true,
-  sameSite: 'lax',
-  secure: process.env.NODE_ENV === 'production',
+  sameSite: IS_PRODUCTION ? 'none' : 'lax',
+  secure: IS_PRODUCTION,
   maxAge: 7 * 24 * 60 * 60 * 1000,
   path: '/',
 };
@@ -124,7 +129,8 @@ export const forgotPassword = asyncHandler(async (req, res) => {
 
   // No transactional email provider is configured in this project yet.
   // In development we log the reset link so the flow is fully testable end-to-end.
-  const resetLink = `${process.env.CLIENT_URL}/reset-password?token=${rawToken}`;
+  const primaryClientUrl = (process.env.CLIENT_URL || '').split(',')[0].trim();
+  const resetLink = `${primaryClientUrl}/reset-password?token=${rawToken}`;
   console.log(`[password reset] ${email} -> ${resetLink}`);
 
   const payload = { ...genericResponse };

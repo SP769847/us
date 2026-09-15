@@ -1,3 +1,5 @@
+import { mediaUrl } from '../../utils/media.js';
+
 function initials(name = '') {
   return name
     .split(' ')
@@ -21,7 +23,7 @@ export default function Avatar({ user, size = 'md', online, className = '' }) {
     <div className={`relative inline-block shrink-0 ${className}`}>
       {user?.avatarUrl ? (
         <img
-          src={user.avatarUrl}
+          src={mediaUrl(user.avatarUrl)}
           alt={user.fullName}
           className={`${sizeClass} rounded-full object-cover border border-white/10`}
         />

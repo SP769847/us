@@ -22,7 +22,15 @@ export const getStats = asyncHandler(async (req, res) => {
 export const listUsers = asyncHandler(async (req, res) => {
   const q = String(req.query.q || '').trim();
   const users = await prisma.user.findMany({
-    where: q ? { OR: [{ username: { contains: q } }, { email: { contains: q } }, { fullName: { contains: q } }] } : undefined,
+    where: q
+      ? {
+          OR: [
+            { username: { contains: q, mode: 'insensitive' } },
+            { email: { contains: q, mode: 'insensitive' } },
+            { fullName: { contains: q, mode: 'insensitive' } },
+          ],
+        }
+      : undefined,
     orderBy: { createdAt: 'desc' },
     take: 100,
   });

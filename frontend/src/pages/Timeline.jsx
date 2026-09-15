@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import api, { extractErrorMessage } from '../services/api.js';
+import { mediaUrl } from '../utils/media.js';
 import { Input, Textarea } from '../components/ui/Input.jsx';
 import Button from '../components/ui/Button.jsx';
 import Modal from '../components/ui/Modal.jsx';
@@ -97,7 +98,7 @@ export default function Timeline() {
                     delete
                   </button>
                 </div>
-                {ev.imageUrl && <img src={ev.imageUrl} alt="" className="rounded-xl mt-3 max-h-48 w-full object-cover" />}
+                {ev.imageUrl && <img src={mediaUrl(ev.imageUrl)} alt="" className="rounded-xl mt-3 max-h-48 w-full object-cover" />}
                 {ev.description && <p className="text-xs text-white/50 mt-2 leading-relaxed">{ev.description}</p>}
               </div>
             </motion.div>

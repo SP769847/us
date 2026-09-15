@@ -1,20 +1,20 @@
-// Prisma schema — written Postgres-compatible.
-// Dev default is SQLite (see .env DATABASE_URL="file:./dev.db") for zero-setup local runs.
-// To move to Postgres/Supabase: change `provider` below to "postgresql" and point
-// DATABASE_URL at your Supabase connection string, then re-run `npm run prisma:migrate`.
+// Prisma schema — PostgreSQL (Render/Supabase). For local dev without a hosted
+// DB, run `docker compose up -d` at the repo root for a local Postgres instance
+// (see backend/.env.example for the matching DATABASE_URL).
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-// SQLite has no native enum support in Prisma, so enums below are plain Strings
-// with values validated in the application layer (see src/utils/validators.js
-// and per-controller allow-lists). Values used:
+// Enums are plain Strings validated in the application layer (see
+// src/utils/validators.js and per-controller allow-lists) rather than native
+// Prisma enums, since the project started on SQLite (no enum support) and this
+// keeps a single schema portable across providers. Values used:
 //   User.role: "USER" | "ADMIN"
 //   User.status: "ACTIVE" | "SUSPENDED"
 //   ConnectionRequest.status: "PENDING" | "ACCEPTED" | "DECLINED"

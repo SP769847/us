@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { apiLimiter } from './middleware/rateLimiters.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { UPLOADS_DIR } from './utils/upload.js';
+import { corsOriginHandler } from './config/corsOrigins.js';
 
 import authRoutes from './routes/auth.routes.js';
 import usersRoutes from './routes/users.routes.js';
@@ -31,7 +32,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 
-app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
+// Render/Heroku-style hosts sit behind a reverse proxy — this is required for
+// secure cookies and rate-limiting to correctly see the real client protocol/IP.
+app.set('trust proxy', 1);
+
+app.use(cors({ origin: corsOriginHandler, credentials: true }));
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 app.use(cookieParser());

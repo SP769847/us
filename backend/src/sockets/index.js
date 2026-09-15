@@ -2,6 +2,7 @@ import { Server } from 'socket.io';
 import { verifyToken } from '../utils/jwt.js';
 import prisma from '../config/prisma.js';
 import cookie from '../utils/cookieParse.js';
+import { corsOriginHandler } from '../config/corsOrigins.js';
 
 let ioInstance = null;
 const onlineUsers = new Map(); // userId -> Set of socket ids
@@ -14,9 +15,9 @@ export function isUserOnline(userId) {
   return onlineUsers.has(userId);
 }
 
-export function initSockets(httpServer, corsOrigin) {
+export function initSockets(httpServer) {
   const io = new Server(httpServer, {
-    cors: { origin: corsOrigin, credentials: true },
+    cors: { origin: corsOriginHandler, credentials: true },
   });
 
   io.use((socket, next) => {
