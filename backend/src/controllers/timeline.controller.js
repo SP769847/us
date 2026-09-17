@@ -2,6 +2,7 @@ import prisma from '../config/prisma.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiError } from '../utils/ApiError.js';
 import { sanitizeText } from '../utils/validators.js';
+import { fileUrl } from '../utils/upload.js';
 
 const MILESTONE_TYPES = new Set(['FIRST_CONVERSATION', 'FIRST_MEETING', 'FIRST_DATE', 'ANNIVERSARY', 'BIRTHDAY', 'SPECIAL_DAY', 'FAVOURITE_MEMORY', 'CUSTOM']);
 
@@ -17,7 +18,7 @@ export const createEvent = asyncHandler(async (req, res) => {
       description: description ? sanitizeText(description, 2000) : null,
       eventDate: new Date(eventDate),
       milestoneType: MILESTONE_TYPES.has(milestoneType) ? milestoneType : 'CUSTOM',
-      imageUrl: req.file ? `/uploads/timeline/${req.file.filename}` : null,
+      imageUrl: fileUrl(req.file, 'timeline'),
     },
   });
 
@@ -40,7 +41,7 @@ export const updateEvent = asyncHandler(async (req, res) => {
   if (req.body.description !== undefined) data.description = sanitizeText(req.body.description, 2000);
   if (req.body.eventDate !== undefined) data.eventDate = new Date(req.body.eventDate);
   if (req.body.milestoneType !== undefined && MILESTONE_TYPES.has(req.body.milestoneType)) data.milestoneType = req.body.milestoneType;
-  if (req.file) data.imageUrl = `/uploads/timeline/${req.file.filename}`;
+  if (req.file) data.imageUrl = fileUrl(req.file, 'timeline');
 
   const updated = await prisma.timelineEvent.update({ where: { id: event.id }, data });
   res.json({ event: updated });

@@ -5,6 +5,7 @@ import { publicUser } from '../utils/serializers.js';
 import { areConnected } from '../services/connectionService.js';
 import { createNotification } from '../services/notificationService.js';
 import { sanitizeText } from '../utils/validators.js';
+import { fileUrl } from '../utils/upload.js';
 
 const READ_THIS_WHEN_CATEGORIES = new Set(['SAD', 'MISS_ME', 'ANGRY', 'CANT_SLEEP', 'NEED_LOVE', 'MOTIVATION', 'CUSTOM']);
 
@@ -22,7 +23,7 @@ export const createLoveNote = asyncHandler(async (req, res) => {
     throw new ApiError(400, 'Please select a valid category');
   }
 
-  const imageUrl = req.file ? `/uploads/love-notes/${req.file.filename}` : null;
+  const imageUrl = fileUrl(req.file, 'love-notes');
 
   const note = await prisma.loveNote.create({
     data: {

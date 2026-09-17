@@ -2,6 +2,7 @@ import prisma from '../config/prisma.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { ApiError } from '../utils/ApiError.js';
 import { sanitizeText } from '../utils/validators.js';
+import { fileUrl } from '../utils/upload.js';
 
 function serialize(memory) {
   return { ...memory, photos: memory.photos ? JSON.parse(memory.photos) : [] };
@@ -18,7 +19,7 @@ export const createMemory = asyncHandler(async (req, res) => {
     }
   }
 
-  const photos = (req.files || []).map((f) => `/uploads/memories/${f.filename}`);
+  const photos = (req.files || []).map((f) => fileUrl(f, 'memories'));
 
   const memory = await prisma.memory.create({
     data: {
@@ -61,7 +62,7 @@ export const updateMemory = asyncHandler(async (req, res) => {
 
   if (req.files?.length) {
     const existing = memory.photos ? JSON.parse(memory.photos) : [];
-    data.photos = JSON.stringify([...existing, ...req.files.map((f) => `/uploads/memories/${f.filename}`)]);
+    data.photos = JSON.stringify([...existing, ...req.files.map((f) => fileUrl(f, 'memories'))]);
   }
 
   const updated = await prisma.memory.update({ where: { id: memory.id }, data });

@@ -18,3 +18,9 @@ services:
         value: 7d
       - key: CLIENT_URL
         sync: false # your Vercel URL, e.g. https://your-app.vercel.app
+      - key: SUPABASE_URL
+        sync: false # Supabase project URL — required, Render's disk is ephemeral (see backend/.env.example)
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false # Supabase service_role key (Project Settings -> API)
+      - key: SUPABASE_STORAGE_BUCKET
+        value: uploads

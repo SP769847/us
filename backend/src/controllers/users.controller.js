@@ -5,6 +5,7 @@ import { ApiError } from '../utils/ApiError.js';
 import { publicUser, privateUser } from '../utils/serializers.js';
 import { sanitizeText, isStrongPassword } from '../utils/validators.js';
 import { findConnectionBetween, isBlockedEitherWay } from '../services/connectionService.js';
+import { fileUrl } from '../utils/upload.js';
 
 export const discoverUsers = asyncHandler(async (req, res) => {
   const q = sanitizeText(req.query.q || '', 50);
@@ -103,7 +104,7 @@ export const updateProfile = asyncHandler(async (req, res) => {
   const data = {};
   if (req.body.fullName !== undefined) data.fullName = sanitizeText(req.body.fullName, 100);
   if (req.body.bio !== undefined) data.bio = sanitizeText(req.body.bio, 300);
-  if (req.file) data.avatarUrl = `/uploads/avatars/${req.file.filename}`;
+  if (req.file) data.avatarUrl = fileUrl(req.file, 'avatars');
 
   if (data.fullName === '') throw new ApiError(400, 'Full name cannot be empty');
 

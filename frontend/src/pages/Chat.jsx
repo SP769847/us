@@ -240,7 +240,7 @@ export default function Chat() {
         />
       </div>
 
-      <div className={`${showList ? 'hidden' : 'flex'} md:flex flex-col flex-1 min-w-0`}>
+      <div className={`${showList ? 'hidden' : 'flex'} md:flex flex-col flex-1 min-w-0 min-h-0`}>
         {!conversationId ? (
           <div className="hidden md:flex flex-1 items-center justify-center">
             <EmptyState icon="💬" title="Select a conversation" subtitle="Choose someone from the list to start chatting." />

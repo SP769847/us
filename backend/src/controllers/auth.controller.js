@@ -6,6 +6,7 @@ import { ApiError } from '../utils/ApiError.js';
 import { signToken } from '../utils/jwt.js';
 import { isValidEmail, isValidUsername, isStrongPassword, sanitizeText } from '../utils/validators.js';
 import { privateUser } from '../utils/serializers.js';
+import { fileUrl } from '../utils/upload.js';
 
 // In production the frontend (Vercel) and backend (Render) live on different
 // domains, so the auth cookie must be sameSite:"none" to be sent cross-site —
@@ -53,10 +54,7 @@ export const register = asyncHandler(async (req, res) => {
   }
 
   const passwordHash = await bcrypt.hash(password, 12);
-  let avatarUrl = null;
-  if (req.file) {
-    avatarUrl = `/uploads/avatars/${req.file.filename}`;
-  }
+  const avatarUrl = fileUrl(req.file, 'avatars');
 
   const user = await prisma.user.create({
     data: { fullName, username, email, passwordHash, avatarUrl },

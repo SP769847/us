@@ -6,6 +6,7 @@ import { requireMembership, getOtherMemberId } from '../services/chatService.js'
 import { createNotification } from '../services/notificationService.js';
 import { getIO } from '../sockets/index.js';
 import { sanitizeText } from '../utils/validators.js';
+import { fileUrl } from '../utils/upload.js';
 
 export function serializeSentQuestion(sq, viewerId) {
   if (!sq) return null;
@@ -119,7 +120,7 @@ export const sendMessage = asyncHandler(async (req, res) => {
 
   if (req.file) {
     type = 'IMAGE';
-    attachmentUrl = `/uploads/chat/${req.file.filename}`;
+    attachmentUrl = fileUrl(req.file, 'chat');
   } else if (req.body.type === 'EMOJI') {
     type = 'EMOJI';
   }
