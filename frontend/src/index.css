@@ -8,15 +8,23 @@
 
 html, body, #root {
   height: 100%;
+  overflow: hidden;
 }
 
-/* Mobile-safe viewport height: falls back to 100vh on browsers that don't
-   support dvh, but avoids the classic mobile bug where 100vh is taller than
-   the visible area behind the browser chrome (which used to push the chat
-   composer off-screen). */
+/* The hard viewport cap for the whole app. This MUST be `height` (a ceiling),
+   not `min-height` (a floor) — min-height lets the box grow taller than the
+   viewport when a page's content demands it, and since nothing then clips
+   it, <body> ends up scrolling as a single unit, dragging the header and
+   composer along with it instead of leaving them fixed while only the
+   content in between scrolls. `height` + `overflow: hidden` here is what
+   forces every descendant's own `overflow-y-auto` region to actually be the
+   one that scrolls. Falls back to 100vh on browsers without dvh support;
+   dvh accounts for mobile browser chrome (address bar, keyboard) resizing
+   the visible viewport. */
 .app-shell {
-  min-height: 100vh;
-  min-height: 100dvh;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
 }
 
 body {

@@ -278,7 +278,7 @@ export default function Chat() {
               </div>
             </div>
 
-            <div ref={scrollRef} onScroll={onScroll} className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+            <div ref={scrollRef} onScroll={onScroll} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-4 py-4 space-y-3">
               {loadingMessages ? (
                 <div className="flex items-center justify-center h-full">
                   <div className="w-6 h-6 rounded-full border-2 border-blush-300/30 border-t-blush-400 animate-spin" />
