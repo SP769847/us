@@ -29,51 +29,63 @@ datasource db {
 //   Message.type: "TEXT" | "IMAGE" | "EMOJI" | "SYSTEM" | "QUESTION"
 //   Report.status: "PENDING" | "RESOLVED" | "DISMISSED"
 //   Question.category / SentQuestion.category: "ROMANTIC" | "CUTE" | "FUNNY" | "DEEP" | "NAUGHTY_18" | "RANDOM"
-//   SentQuestion.mode: "SURPRISE" | "ASK_ME_ANYTHING"
+//   Question.subcategory / SentQuestion.subcategory (NAUGHTY_18 only): "ATTRACTION" | "SEXUAL_PREFERENCES" |
+//     "FANTASIES_CURIOSITY" | "PERSONAL_EXPERIENCE" | "INTIMACY_RELATIONSHIP" | "BOUNDARIES_PREFERENCES" |
+//     "COUPLE_CONFESSIONS" | "FLIRTY_COUPLE" | "PERSONAL_RATING" | "TURN_ONS"
+//   Question.intimacyLevel / SentQuestion.intimacyLevel (NAUGHTY_18 only): "ROMANTIC" | "FLIRTY" | "INTIMATE" | "DEEPLY_PERSONAL"
+//   Question.responseType / SentQuestion.responseType: "TEXT" | "MULTIPLE_CHOICE" | "YES_NO" | "SCALE_1_10"
+//   SentQuestion.mode: "SURPRISE" | "ASK_ME_ANYTHING" | "ANSWER_TOGETHER"
+//   User.questionPreference: "CUTE" | "ROMANTIC" | "FLIRTY" | "INTIMATE" | "EXPLICIT_18"
+//   CustomQuestion.visibility: "PRIVATE" | "PARTNER"
 
 model User {
-  id           String   @id @default(uuid())
-  fullName     String
-  username     String   @unique
-  email        String   @unique
-  passwordHash String
-  avatarUrl    String?
-  bio          String?  @db.Text
-  role         String   @default("USER")
-  status       String   @default("ACTIVE")
-  lastSeenAt   DateTime @default(now())
-  isOnline     Boolean  @default(false)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                 String   @id @default(uuid())
+  fullName           String
+  username           String   @unique
+  email              String   @unique
+  passwordHash       String
+  avatarUrl          String?
+  bio                String?  @db.Text
+  role               String   @default("USER")
+  status             String   @default("ACTIVE")
+  lastSeenAt         DateTime @default(now())
+  isOnline           Boolean  @default(false)
+  questionPreference String   @default("ROMANTIC") // CUTE | ROMANTIC | FLIRTY | INTIMATE | EXPLICIT_18 — Surprise Me content level
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
-  sentRequests           ConnectionRequest[]  @relation("SentRequests")
-  receivedRequests       ConnectionRequest[]  @relation("ReceivedRequests")
-  connectionsA           Connection[]         @relation("ConnectionUserA")
-  connectionsB           Connection[]         @relation("ConnectionUserB")
-  blocksInitiated        BlockedUser[]        @relation("Blocker")
-  blocksReceived         BlockedUser[]        @relation("Blocked")
-  reportsFiled           Report[]             @relation("ReportedBy")
-  reportsAgainst         Report[]             @relation("ReportedUser")
-  conversationMembers    ConversationMember[]
-  messagesSent           Message[]            @relation("MessageSender")
-  messageReactions       MessageReaction[]
-  messagePins            MessagePin[]
-  loveNotesSent          LoveNote[]           @relation("LoveNoteSender")
-  loveNotesReceived      LoveNote[]           @relation("LoveNoteRecipient")
-  secretMessagesSent     SecretMessage[]      @relation("SecretSender")
-  secretMessagesReceived SecretMessage[]      @relation("SecretRecipient")
-  dailyQuestionAnswers   QuestionAnswer[]
-  sentQuestionsSent      SentQuestion[]       @relation("SentQuestionSender")
-  sentQuestionsReceived  SentQuestion[]       @relation("SentQuestionRecipient")
-  challengesSent         Challenge[]          @relation("ChallengeSender")
-  challengesReceived     Challenge[]          @relation("ChallengeRecipient")
-  challengeResponses     ChallengeResponse[]
-  gameSessions           GameSession[]        @relation("GameInitiator")
-  memories               Memory[]
-  timelineEvents         TimelineEvent[]
-  specialDates           SpecialDate[]
-  notifications          Notification[]       @relation("NotificationRecipient")
-  passwordResetTokens    PasswordResetToken[]
+  sentRequests            ConnectionRequest[]  @relation("SentRequests")
+  receivedRequests        ConnectionRequest[]  @relation("ReceivedRequests")
+  connectionsA            Connection[]         @relation("ConnectionUserA")
+  connectionsB            Connection[]         @relation("ConnectionUserB")
+  blocksInitiated         BlockedUser[]        @relation("Blocker")
+  blocksReceived          BlockedUser[]        @relation("Blocked")
+  reportsFiled            Report[]             @relation("ReportedBy")
+  reportsAgainst          Report[]             @relation("ReportedUser")
+  conversationMembers     ConversationMember[]
+  messagesSent            Message[]            @relation("MessageSender")
+  messageReactions        MessageReaction[]
+  messagePins             MessagePin[]
+  loveNotesSent           LoveNote[]           @relation("LoveNoteSender")
+  loveNotesReceived       LoveNote[]           @relation("LoveNoteRecipient")
+  secretMessagesSent      SecretMessage[]      @relation("SecretSender")
+  secretMessagesReceived  SecretMessage[]      @relation("SecretRecipient")
+  dailyQuestionAnswers    QuestionAnswer[]
+  sentQuestionsSent       SentQuestion[]       @relation("SentQuestionSender")
+  sentQuestionsReceived   SentQuestion[]       @relation("SentQuestionRecipient")
+  savedQuestions          SavedQuestion[]
+  seenQuestions           SeenQuestion[]
+  customQuestionsAuthored CustomQuestion[]     @relation("CustomQuestionAuthor")
+  customQuestionsReceived CustomQuestion[]     @relation("CustomQuestionRecipient")
+  challengesSent          Challenge[]          @relation("ChallengeSender")
+  challengesReceived      Challenge[]          @relation("ChallengeRecipient")
+  challengeResponses      ChallengeResponse[]
+  gameSessions            GameSession[]        @relation("GameInitiator")
+  memories                Memory[]
+  timelineEvents          TimelineEvent[]
+  specialDates            SpecialDate[]
+  notifications           Notification[]       @relation("NotificationRecipient")
+  passwordResetTokens     PasswordResetToken[]
 
   @@index([username])
   @@index([email])
@@ -303,37 +315,55 @@ model QuestionAnswer {
 model Question {
   id            String   @id @default(uuid())
   category      String
+  subcategory   String? // NAUGHTY_18 only — see contentBanks.js NAUGHTY_SUBCATEGORIES
+  intimacyLevel String? // NAUGHTY_18 only: ROMANTIC | FLIRTY | INTIMATE | DEEPLY_PERSONAL — "how personal" depth dial, independent of subcategory theme
   questionText  String   @db.VarChar(500)
+  responseType  String   @default("TEXT") // TEXT | MULTIPLE_CHOICE | YES_NO | SCALE_1_10
+  options       String?  @db.Text // JSON array of strings, MULTIPLE_CHOICE only
   ageRestricted Boolean  @default(false)
   active        Boolean  @default(true)
   createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   sentQuestions SentQuestion[]
+  savedByUsers  SavedQuestion[]
+  seenByUsers   SeenQuestion[]
 
   @@unique([category, questionText])
   @@index([category])
+  @@index([subcategory])
+  @@index([intimacyLevel])
 }
 
-// A question (from the bank, or a custom "Ask Me Anything" prompt) sent by one
-// partner to the other inside a conversation. Always rendered as its own
-// special message card (Message.type = "QUESTION") rather than plain text.
-// Visible only to the sender and recipient — never surfaced in public
-// profiles, search, discover, or admin statistics.
+// A question (from the bank, a custom "Ask Me Anything" prompt, or a
+// Personalization custom question) sent by one partner to the other inside a
+// conversation. Always rendered as its own special message card
+// (Message.type = "QUESTION") rather than plain text. Visible only to the
+// sender and recipient — never surfaced in public profiles, search,
+// discover, or admin statistics.
 model SentQuestion {
-  id             String    @id @default(uuid())
-  questionId     String?
-  customText     String?   @db.Text
-  mode           String    @default("SURPRISE")
-  category       String?
-  conversationId String
-  messageId      String    @unique
-  senderId       String
-  recipientId    String
-  revealed       Boolean   @default(true)
-  answer         String?   @db.Text
-  answeredById   String?
-  answeredAt     DateTime?
-  createdAt      DateTime  @default(now())
+  id                 String    @id @default(uuid())
+  questionId         String?
+  customText         String?   @db.Text
+  mode               String    @default("SURPRISE") // SURPRISE | ASK_ME_ANYTHING | ANSWER_TOGETHER
+  category           String?
+  subcategory        String?
+  intimacyLevel      String?
+  responseType       String    @default("TEXT")
+  options            String?   @db.Text
+  conversationId     String
+  messageId          String    @unique
+  senderId           String
+  recipientId        String
+  revealed           Boolean   @default(true)
+  answer             String?   @db.Text // the recipient's answer (SURPRISE/ASK_ME_ANYTHING), or ANSWER_TOGETHER's recipient-side slot
+  answeredById       String?
+  answeredAt         DateTime?
+  senderAnswer       String?   @db.Text // ANSWER_TOGETHER only — the sender's own answer, given at send time
+  senderAnsweredAt   DateTime?
+  skippedByRecipient Boolean   @default(false)
+  skippedAt          DateTime?
+  createdAt          DateTime  @default(now())
 
   question     Question?    @relation(fields: [questionId], references: [id], onDelete: SetNull)
   message      Message      @relation(fields: [messageId], references: [id], onDelete: Cascade)
@@ -345,6 +375,67 @@ model SentQuestion {
   @@index([conversationId])
   @@index([senderId])
   @@index([recipientId])
+}
+
+// A personal bookmark of a question the user wants to come back to later.
+// Private to the user who saved it — never joined into any shared/partner view.
+model SavedQuestion {
+  id         String   @id @default(uuid())
+  userId     String
+  questionId String?
+  customText String?  @db.Text
+  category   String?
+  createdAt  DateTime @default(now())
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question Question? @relation(fields: [questionId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([questionId])
+}
+
+// Per-user "already shown" tracking for the Surprise Me engine, so the same
+// question doesn't repeat until the eligible pool has been exhausted.
+model SeenQuestion {
+  id         String   @id @default(uuid())
+  userId     String
+  questionId String
+  seenAt     DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, questionId])
+  @@index([userId])
+  @@index([questionId])
+}
+
+// A user-composed question (Personalization feature). PRIVATE ones are just a
+// personal prompt bank entry; PARTNER ones get delivered into the shared
+// conversation — immediately, or later by the scheduler (see
+// src/utils/questionScheduler.js) when scheduledFor is set. Only the author
+// (and, once delivered, the recipient via the resulting SentQuestion) can ever
+// see the content.
+model CustomQuestion {
+  id             String    @id @default(uuid())
+  authorId       String
+  recipientId    String?
+  conversationId String?
+  questionText   String    @db.Text
+  category       String?
+  ageRestricted  Boolean   @default(false)
+  visibility     String    @default("PRIVATE") // PRIVATE | PARTNER
+  scheduledFor   DateTime?
+  deliveredAt    DateTime?
+  sentQuestionId String?   @unique
+  createdAt      DateTime  @default(now())
+
+  author    User  @relation("CustomQuestionAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  recipient User? @relation("CustomQuestionRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@index([authorId])
+  @@index([recipientId])
+  @@index([scheduledFor])
 }
 
 model Challenge {

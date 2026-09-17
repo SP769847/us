@@ -114,6 +114,9 @@ export default function Chat() {
     const onQuestionRevealed = ({ messageId, sentQuestion }) => {
       setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, sentQuestion } : m)));
     };
+    const onQuestionSkipped = ({ messageId, sentQuestion }) => {
+      setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, sentQuestion } : m)));
+    };
     const onTypingStart = ({ conversationId: cid }) => {
       if (cid === conversationId) setTypingPeer(true);
     };
@@ -129,6 +132,7 @@ export default function Chat() {
     socket.on('message-pin-changed', onPinChanged);
     socket.on('question-answered', onQuestionAnswered);
     socket.on('question-revealed', onQuestionRevealed);
+    socket.on('question-skipped', onQuestionSkipped);
     socket.on('typing-start', onTypingStart);
     socket.on('typing-stop', onTypingStop);
     socket.on('user-online', onOnline);
@@ -141,6 +145,7 @@ export default function Chat() {
       socket.off('message-pin-changed', onPinChanged);
       socket.off('question-answered', onQuestionAnswered);
       socket.off('question-revealed', onQuestionRevealed);
+      socket.off('question-skipped', onQuestionSkipped);
       socket.off('typing-start', onTypingStart);
       socket.off('typing-stop', onTypingStop);
       socket.off('user-online', onOnline);
@@ -201,6 +206,10 @@ export default function Chat() {
 
   const revealQuestion = async (sentQuestionId) => {
     await api.post(`/questions/${sentQuestionId}/reveal`);
+  };
+
+  const skipQuestion = async (sentQuestionId) => {
+    await api.post(`/questions/${sentQuestionId}/skip`);
   };
 
   const openPinned = async () => {
@@ -289,6 +298,7 @@ export default function Chat() {
                         onReply={setReplyTo}
                         onAnswerQuestion={answerQuestion}
                         onRevealQuestion={revealQuestion}
+                        onSkipQuestion={skipQuestion}
                       />
                     </motion.div>
                   ))}

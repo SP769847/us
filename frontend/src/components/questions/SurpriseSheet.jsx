@@ -4,6 +4,8 @@ import { createPortal } from 'react-dom';
 import api, { extractErrorMessage } from '../../services/api.js';
 import { useSurpriseQuestion } from '../../hooks/useSurpriseQuestion.js';
 import CategoryGrid from './CategoryGrid.jsx';
+import NaughtySubcategoryPicker from './NaughtySubcategoryPicker.jsx';
+import IntimacyLevelPicker from './IntimacyLevelPicker.jsx';
 import QuestionCard from './QuestionCard.jsx';
 import AgeGateModal from './AgeGateModal.jsx';
 
@@ -13,7 +15,12 @@ import AgeGateModal from './AgeGateModal.jsx';
 export default function SurpriseSheet({ open, onClose, conversationId }) {
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState('');
-  const { question, loading, error, selectCategory, surpriseMe, next, reset, ageGateOpen, confirmAgeGate, cancelAgeGate } = useSurpriseQuestion();
+  const [savedCurrentId, setSavedCurrentId] = useState(null);
+  const {
+    question, loading, error, naughtyPickerOpen, levelPickerOpen,
+    selectCategory, selectIntimacyLevel, browseByTheme, selectSubcategory, selectAnyNaughty, surpriseMe, next, reset, backToCategories,
+    ageGateOpen, confirmAgeGate, cancelAgeGate,
+  } = useSurpriseQuestion();
 
   if (typeof document === 'undefined') return null;
 
@@ -23,21 +30,30 @@ export default function SurpriseSheet({ open, onClose, conversationId }) {
     onClose();
   };
 
-  const send = async ({ answer }) => {
+  const send = async ({ answer, mode = 'SURPRISE' }) => {
     setSending(true);
     setSendError('');
     try {
       await api.post('/questions/send', {
         conversationId,
         questionId: question.id,
-        mode: 'SURPRISE',
-        answer: answer || undefined,
+        mode,
+        answer: answer === undefined || answer === '' ? undefined : answer,
       });
       close();
     } catch (err) {
       setSendError(extractErrorMessage(err, 'Could not send this question'));
     } finally {
       setSending(false);
+    }
+  };
+
+  const saveCurrent = async (q) => {
+    try {
+      await api.post('/questions/saved', { questionId: q.id });
+      setSavedCurrentId(q.id);
+    } catch {
+      // non-critical
     }
   };
 
@@ -74,7 +90,11 @@ export default function SurpriseSheet({ open, onClose, conversationId }) {
               </div>
 
               <div className="p-5">
-                {!question && !loading ? (
+                {levelPickerOpen ? (
+                  <IntimacyLevelPicker onSelect={selectIntimacyLevel} onBrowseByTheme={browseByTheme} onBack={backToCategories} />
+                ) : naughtyPickerOpen ? (
+                  <NaughtySubcategoryPicker onSelect={selectSubcategory} onAny={selectAnyNaughty} onBack={backToCategories} />
+                ) : !question && !loading ? (
                   <CategoryGrid onSelect={selectCategory} onSurpriseMe={surpriseMe} compact />
                 ) : error ? (
                   <div className="text-center py-6">
@@ -85,7 +105,15 @@ export default function SurpriseSheet({ open, onClose, conversationId }) {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    <QuestionCard question={question} loading={loading} sending={sending} onNext={next} onSend={send} />
+                    <QuestionCard
+                      question={question}
+                      loading={loading}
+                      sending={sending}
+                      saved={savedCurrentId === question?.id}
+                      onNext={next}
+                      onSend={send}
+                      onSave={saveCurrent}
+                    />
                     {sendError && <p className="text-xs text-red-300">{sendError}</p>}
                     <button onClick={reset} className="text-xs text-white/40 hover:text-white/70 transition-colors">
                       ← Choose a different category

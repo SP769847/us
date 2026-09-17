@@ -66,6 +66,7 @@ function SidebarContent({ onNavigate }) {
             <NavItem to="/admin" label="Overview" icon="📊" onClick={onNavigate} />
             <NavItem to="/admin/users" label="Users" icon="🧑‍🤝‍🧑" onClick={onNavigate} />
             <NavItem to="/admin/reports" label="Reports" icon="🚩" onClick={onNavigate} />
+            <NavItem to="/admin/questions" label="Question Bank" icon="❓" onClick={onNavigate} />
           </>
         )}
       </div>

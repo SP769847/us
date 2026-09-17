@@ -10,20 +10,50 @@ import { sanitizeText } from '../utils/validators.js';
 export function serializeSentQuestion(sq, viewerId) {
   if (!sq) return null;
   const needsReveal = sq.mode === 'ASK_ME_ANYTHING' && !sq.revealed && viewerId !== sq.senderId;
-  return {
+  // The recipient's skip is never disclosed to the sender — the sender's
+  // serialized view always reports `skipped: false` and keeps behaving as
+  // "waiting for their answer" regardless of the real state.
+  const isRecipientViewer = viewerId === sq.recipientId;
+  const isSenderViewer = viewerId === sq.senderId;
+
+  const base = {
     id: sq.id,
     mode: sq.mode,
     category: sq.category,
+    subcategory: sq.subcategory,
+    intimacyLevel: sq.intimacyLevel,
+    responseType: sq.responseType || 'TEXT',
+    options: sq.options ? JSON.parse(sq.options) : null,
     ageRestricted: sq.category === 'NAUGHTY_18',
     questionText: needsReveal ? null : sq.customText || sq.question?.questionText || null,
     needsReveal,
-    canReveal: needsReveal && viewerId === sq.recipientId,
-    canAnswer: !sq.answer && viewerId === sq.recipientId && !needsReveal,
+    canReveal: needsReveal && isRecipientViewer,
+    skipped: isRecipientViewer ? sq.skippedByRecipient : false,
+    senderId: sq.senderId,
+    recipientId: sq.recipientId,
+  };
+
+  if (sq.mode === 'ANSWER_TOGETHER') {
+    // A blind, simultaneous-feeling reveal: neither side's answer is shown
+    // until both have answered, so seeing the partner's answer first never
+    // colours your own.
+    const bothAnswered = Boolean(sq.senderAnswer) && Boolean(sq.answer);
+    const myAnswer = isSenderViewer ? sq.senderAnswer : isRecipientViewer ? sq.answer : null;
+    return {
+      ...base,
+      bothAnswered,
+      myAnswer,
+      partnerAnswer: bothAnswered ? (isSenderViewer ? sq.answer : isRecipientViewer ? sq.senderAnswer : null) : null,
+      canAnswer: !myAnswer && !sq.skippedByRecipient && isRecipientViewer && !needsReveal,
+    };
+  }
+
+  return {
+    ...base,
+    canAnswer: !sq.answer && !sq.skippedByRecipient && isRecipientViewer && !needsReveal,
     answer: sq.answer,
     answeredAt: sq.answeredAt,
     answeredById: sq.answeredById,
-    senderId: sq.senderId,
-    recipientId: sq.recipientId,
   };
 }
 

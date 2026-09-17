@@ -31,6 +31,7 @@ import Notifications from './pages/Notifications.jsx';
 import AdminDashboard from './pages/admin/AdminDashboard.jsx';
 import AdminUsers from './pages/admin/AdminUsers.jsx';
 import AdminReports from './pages/admin/AdminReports.jsx';
+import AdminQuestions from './pages/admin/AdminQuestions.jsx';
 
 import NotFound from './pages/NotFound.jsx';
 
@@ -73,6 +74,7 @@ export default function App() {
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/users" element={<AdminUsers />} />
               <Route path="/admin/reports" element={<AdminReports />} />
+              <Route path="/admin/questions" element={<AdminQuestions />} />
             </Route>
           </Route>
         </Route>

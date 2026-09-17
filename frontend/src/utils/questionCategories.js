@@ -16,6 +16,57 @@ export function categoryMeta(key) {
   return CATEGORY_META[key] || { label: key || 'Question', emoji: '✨', accent: 'from-white/15 to-white/0' };
 }
 
+// Naughty 18+ subcategories (themes) — order matches the spec's presentation order.
+export const NAUGHTY_SUBCATEGORY_META = {
+  ATTRACTION: { label: 'Attraction', emoji: '💕' },
+  SEXUAL_PREFERENCES: { label: 'Sexual Preferences', emoji: '🔥' },
+  TURN_ONS: { label: 'Turn-Ons', emoji: '👀' },
+  FANTASIES_CURIOSITY: { label: 'Fantasies & Curiosity', emoji: '😈' },
+  PERSONAL_EXPERIENCE: { label: 'Personal Experience', emoji: '💭' },
+  INTIMACY_RELATIONSHIP: { label: 'Intimacy & Relationship', emoji: '🛏️' },
+  BOUNDARIES_PREFERENCES: { label: 'Boundaries & Consent', emoji: '🔐' },
+  COUPLE_CONFESSIONS: { label: 'Couple Confessions', emoji: '🥰' },
+  FLIRTY_COUPLE: { label: 'Flirty Couple', emoji: '😏' },
+  PERSONAL_RATING: { label: 'Personal Rating', emoji: '🌶️' },
+};
+
+export const NAUGHTY_SUBCATEGORY_ORDER = Object.keys(NAUGHTY_SUBCATEGORY_META);
+
+export function subcategoryMeta(key) {
+  return NAUGHTY_SUBCATEGORY_META[key] || { label: key || 'Naughty', emoji: '🔥' };
+}
+
+// The "how personal do you want to get" depth dial — independent of theme.
+// Every Naughty 18+ question carries one of these.
+export const INTIMACY_LEVEL_META = {
+  ROMANTIC: { label: 'Romantic', emoji: '💗' },
+  FLIRTY: { label: 'Flirty', emoji: '🌶️' },
+  INTIMATE: { label: 'Intimate', emoji: '🔥' },
+  DEEPLY_PERSONAL: { label: 'Deeply Personal', emoji: '🔐' },
+};
+
+export const INTIMACY_LEVEL_ORDER = Object.keys(INTIMACY_LEVEL_META);
+
+export function intimacyLevelMeta(key) {
+  return INTIMACY_LEVEL_META[key] || null;
+}
+
+// The "simple preference setting" from mildest to most mature — each level
+// cumulatively unlocks more content. The server is still the source of truth
+// (and re-enforces the 18+ gate); this is just the picker's presentation.
+export const CONTENT_LEVEL_META = {
+  CUTE: { label: 'Cute only', emoji: '🥰' },
+  ROMANTIC: { label: 'Romantic', emoji: '❤️' },
+  FLIRTY: { label: 'Flirty', emoji: '😉' },
+  INTIMATE: { label: 'Intimate', emoji: '💗' },
+  EXPLICIT_18: { label: '18+', emoji: '🔥' },
+};
+
+export const CONTENT_LEVEL_ORDER = Object.keys(CONTENT_LEVEL_META);
+
+// Levels that require an 18+ confirmation to select.
+export const AGE_GATED_LEVELS = new Set(['FLIRTY', 'INTIMATE', 'EXPLICIT_18']);
+
 export const AGE_GATE_STORAGE_KEY = 'us:ageConfirmed18';
 
 export function isAgeConfirmed() {
