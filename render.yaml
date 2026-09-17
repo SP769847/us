@@ -24,3 +24,23 @@ services:
         sync: false # Supabase service_role key (Project Settings -> API)
       - key: SUPABASE_STORAGE_BUCKET
         value: uploads
+      - key: APP_URL
+        sync: false # your Vercel URL, e.g. https://your-app.vercel.app — used for links inside notification emails/WhatsApp messages
+      - key: EMAIL_PROVIDER
+        value: resend
+      - key: EMAIL_API_KEY
+        sync: false # optional — Miss You/waiting-reply/etc. emails are skipped (not failed) until this is set
+      - key: EMAIL_FROM
+        sync: false
+      - key: WHATSAPP_PROVIDER
+        value: meta_cloud_api
+      - key: WHATSAPP_ACCESS_TOKEN
+        sync: false # optional — WhatsApp features no-op until this and the phone number ID are set
+      - key: WHATSAPP_PHONE_NUMBER_ID
+        sync: false
+      - key: MISS_YOU_COOLDOWN_HOURS
+        value: "6"
+      - key: WAITING_REPLY_DELAY_HOURS
+        value: "3"
+      - key: WAITING_REPLY_COOLDOWN_HOURS
+        value: "12"

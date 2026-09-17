@@ -1,5 +1,6 @@
 import prisma from '../config/prisma.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
+import { parsePreferences, mergePreferences } from '../utils/notificationPreferences.js';
 
 export const listNotifications = asyncHandler(async (req, res) => {
   const notifications = await prisma.notification.findMany({
@@ -28,4 +29,14 @@ export const markRead = asyncHandler(async (req, res) => {
 export const markAllRead = asyncHandler(async (req, res) => {
   await prisma.notification.updateMany({ where: { recipientId: req.user.id, isRead: false }, data: { isRead: true } });
   res.json({ message: 'All marked as read' });
+});
+
+export const getPreferences = asyncHandler(async (req, res) => {
+  res.json({ preferences: parsePreferences(req.user.notificationPreferences) });
+});
+
+export const updatePreferences = asyncHandler(async (req, res) => {
+  const merged = mergePreferences(req.user.notificationPreferences, req.body);
+  await prisma.user.update({ where: { id: req.user.id }, data: { notificationPreferences: JSON.stringify(merged) } });
+  res.json({ preferences: merged });
 });

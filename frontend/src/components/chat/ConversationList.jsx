@@ -53,6 +53,8 @@ export default function ConversationList({ conversations, activeId, onSelect, pr
                           ? '📷 Photo'
                           : c.lastMessage.type === 'QUESTION'
                           ? '✨ Surprise question'
+                          : c.lastMessage.type === 'MISS_YOU'
+                          ? '❤️ Miss you'
                           : c.lastMessage.content
                         : 'Say hello 👋'}
                     </p>

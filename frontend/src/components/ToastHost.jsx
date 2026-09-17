@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext.jsx';
 import { useNotifications } from '../contexts/NotificationContext.jsx';
 
@@ -15,11 +16,14 @@ const ICONS = {
   DAILY_ANSWER_SHARED: '🥰',
   NEW_QUESTION: '✨',
   QUESTION_ANSWERED: '💕',
+  MISS_YOU: '❤️',
+  WAITING_FOR_REPLY: '💌',
 };
 
 export default function ToastHost() {
   const { user } = useAuth();
   const { toast, dismissToast } = useNotifications();
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (!toast) return;
@@ -29,6 +33,11 @@ export default function ToastHost() {
 
   if (!user) return null;
 
+  const openToast = () => {
+    if (toast?.conversationId) navigate(`/chat/${toast.conversationId}`);
+    dismissToast();
+  };
+
   return (
     <div className="fixed top-4 right-4 z-[100] w-[calc(100%-2rem)] max-w-sm">
       <AnimatePresence>
@@ -37,7 +46,7 @@ export default function ToastHost() {
             initial={{ opacity: 0, y: -20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
-            onClick={dismissToast}
+            onClick={openToast}
             className="glass rounded-2xl p-4 shadow-soft cursor-pointer flex items-start gap-3"
           >
             <span className="text-xl leading-none">{ICONS[toast.type] || '✨'}</span>

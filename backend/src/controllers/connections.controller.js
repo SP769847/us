@@ -4,6 +4,8 @@ import { ApiError } from '../utils/ApiError.js';
 import { publicUser } from '../utils/serializers.js';
 import { isBlockedEitherWay, findConnectionBetween } from '../services/connectionService.js';
 import { createNotification } from '../services/notificationService.js';
+import { sendConnectionRequestMessage } from '../services/notifications/whatsappProvider.js';
+import { escapeHtml } from '../utils/html.js';
 
 export const sendRequest = asyncHandler(async (req, res) => {
   const { recipientUsername, message } = req.body;
@@ -47,12 +49,23 @@ export const sendRequest = asyncHandler(async (req, res) => {
         },
       });
 
+  const appUrl = process.env.APP_URL || '';
   await createNotification({
     recipientId: recipient.id,
+    senderId: req.user.id,
     type: 'CONNECTION_REQUEST',
     title: 'Someone wants to connect with you',
     body: `${req.user.fullName} sent you a connection request`,
     data: { requestId: request.id, senderUsername: req.user.username },
+    email: {
+      subject: '❤️ Someone wants to connect with you',
+      title: '❤️ New connection request',
+      bodyHtml: `<p><strong>${escapeHtml(req.user.fullName)}</strong> sent you a connection request. Open the app to respond.</p>`,
+      ctaLabel: 'Open App',
+      ctaUrl: appUrl ? `${appUrl}/connections` : undefined,
+    },
+    whatsappSend: (recipientUser) =>
+      sendConnectionRequestMessage({ to: recipientUser.whatsappNumber, senderName: req.user.fullName, appUrl: appUrl ? `${appUrl}/connections` : '' }),
   });
 
   res.status(201).json({ request });

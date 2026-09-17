@@ -7,6 +7,7 @@ import { createNotification } from '../services/notificationService.js';
 import { getIO } from '../sockets/index.js';
 import { sanitizeText } from '../utils/validators.js';
 import { fileUrl } from '../utils/upload.js';
+import { escapeHtml } from '../utils/html.js';
 
 export function serializeSentQuestion(sq, viewerId) {
   if (!sq) return null;
@@ -157,12 +158,22 @@ export const sendMessage = asyncHandler(async (req, res) => {
 
   const otherUserId = await getOtherMemberId(req.params.id, req.user.id);
   if (otherUserId) {
+    const appUrl = process.env.APP_URL || '';
     await createNotification({
       recipientId: otherUserId,
+      senderId: req.user.id,
       type: 'NEW_MESSAGE',
       title: `New message from ${req.user.fullName}`,
       body: type === 'TEXT' ? content?.slice(0, 100) : 'Sent a photo',
-      data: { conversationId: req.params.id, messageId: message.id },
+      conversationId: req.params.id,
+      messageId: message.id,
+      email: {
+        subject: `💬 New message from ${req.user.fullName}`,
+        title: '💬 New message',
+        bodyHtml: `<p><strong>${escapeHtml(req.user.fullName)}</strong> sent you a new message. Open the app to read it.</p>`,
+        ctaLabel: 'Open Chat',
+        ctaUrl: appUrl ? `${appUrl}/chat/${req.params.id}` : undefined,
+      },
     });
   }
 

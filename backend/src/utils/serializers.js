@@ -19,5 +19,8 @@ export function privateUser(user) {
     email: user.email,
     role: user.role,
     status: user.status,
+    questionPreference: user.questionPreference,
+    whatsappNumber: user.whatsappNumber || null,
+    whatsappVerified: Boolean(user.whatsappVerified),
   };
 }

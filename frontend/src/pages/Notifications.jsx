@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { useNotifications } from '../contexts/NotificationContext.jsx';
 import Button from '../components/ui/Button.jsx';
 import EmptyState from '../components/ui/EmptyState.jsx';
@@ -12,6 +13,10 @@ const ICONS = {
   CHALLENGE_RECEIVED: '🔥',
   GAME_INVITE: '🎲',
   DAILY_ANSWER_SHARED: '🥰',
+  NEW_QUESTION: '✨',
+  QUESTION_ANSWERED: '💕',
+  MISS_YOU: '❤️',
+  WAITING_FOR_REPLY: '💌',
 };
 
 function timeAgo(date) {
@@ -24,6 +29,12 @@ function timeAgo(date) {
 
 export default function Notifications() {
   const { notifications, markRead, markAllRead, unreadCount } = useNotifications();
+  const navigate = useNavigate();
+
+  const open = (n) => {
+    if (!n.isRead) markRead(n.id);
+    if (n.conversationId) navigate(`/chat/${n.conversationId}`);
+  };
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-8">
@@ -43,7 +54,7 @@ export default function Notifications() {
           {notifications.map((n) => (
             <button
               key={n.id}
-              onClick={() => !n.isRead && markRead(n.id)}
+              onClick={() => open(n)}
               className={`w-full text-left flex items-start gap-3 rounded-xl p-4 transition-colors ${
                 n.isRead ? 'bg-white/[0.02]' : 'bg-white/6'
               } hover:bg-white/8`}

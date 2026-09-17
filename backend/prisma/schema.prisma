@@ -26,7 +26,12 @@ datasource db {
 //   User.role: "USER" | "ADMIN"
 //   User.status: "ACTIVE" | "SUSPENDED"
 //   ConnectionRequest.status: "PENDING" | "ACCEPTED" | "DECLINED"
-//   Message.type: "TEXT" | "IMAGE" | "EMOJI" | "SYSTEM" | "QUESTION"
+//   Message.type: "TEXT" | "IMAGE" | "EMOJI" | "SYSTEM" | "QUESTION" | "MISS_YOU"
+//   Notification.type: "CONNECTION_REQUEST" | "CONNECTION_ACCEPTED" | "NEW_MESSAGE" | "NEW_LOVE_NOTE" |
+//     "READ_THIS_WHEN" | "NEW_SECRET_MESSAGE" | "CHALLENGE_RECEIVED" | "GAME_INVITE" | "DAILY_ANSWER_SHARED" |
+//     "NEW_QUESTION" | "QUESTION_ANSWERED" | "MISS_YOU" | "WAITING_FOR_REPLY"
+//   NotificationDelivery.channel: "IN_APP" | "EMAIL" | "WHATSAPP"
+//   NotificationDelivery.status: "PENDING" | "SENT" | "DELIVERED" | "FAILED" | "SKIPPED"
 //   Report.status: "PENDING" | "RESOLVED" | "DISMISSED"
 //   Question.category / SentQuestion.category: "ROMANTIC" | "CUTE" | "FUNNY" | "DEEP" | "NAUGHTY_18" | "RANDOM"
 //   Question.subcategory / SentQuestion.subcategory (NAUGHTY_18 only): "ATTRACTION" | "SEXUAL_PREFERENCES" |
@@ -39,20 +44,25 @@ datasource db {
 //   CustomQuestion.visibility: "PRIVATE" | "PARTNER"
 
 model User {
-  id                 String   @id @default(uuid())
-  fullName           String
-  username           String   @unique
-  email              String   @unique
-  passwordHash       String
-  avatarUrl          String?
-  bio                String?  @db.Text
-  role               String   @default("USER")
-  status             String   @default("ACTIVE")
-  lastSeenAt         DateTime @default(now())
-  isOnline           Boolean  @default(false)
-  questionPreference String   @default("ROMANTIC") // CUTE | ROMANTIC | FLIRTY | INTIMATE | EXPLICIT_18 — Surprise Me content level
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id                      String    @id @default(uuid())
+  fullName                String
+  username                String    @unique
+  email                   String    @unique
+  passwordHash            String
+  avatarUrl               String?
+  bio                     String?   @db.Text
+  role                    String    @default("USER")
+  status                  String    @default("ACTIVE")
+  lastSeenAt              DateTime  @default(now())
+  isOnline                Boolean   @default(false)
+  questionPreference      String    @default("ROMANTIC") // CUTE | ROMANTIC | FLIRTY | INTIMATE | EXPLICIT_18 — Surprise Me content level
+  notificationPreferences String?   @db.Text // JSON: { inApp: {...}, email: {...}, whatsapp: {...} } — see utils/notificationPreferences.js for defaults/shape
+  whatsappNumber          String? // E.164 format, e.g. +919876543210
+  whatsappVerified        Boolean   @default(false)
+  whatsappOtpHash         String?
+  whatsappOtpExpiresAt    DateTime?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
 
   sentRequests            ConnectionRequest[]  @relation("SentRequests")
   receivedRequests        ConnectionRequest[]  @relation("ReceivedRequests")
@@ -85,6 +95,7 @@ model User {
   timelineEvents          TimelineEvent[]
   specialDates            SpecialDate[]
   notifications           Notification[]       @relation("NotificationRecipient")
+  notificationsSent       Notification[]       @relation("NotificationSender")
   passwordResetTokens     PasswordResetToken[]
 
   @@index([username])
@@ -534,16 +545,61 @@ model SpecialDate {
 }
 
 model Notification {
-  id          String   @id @default(uuid())
-  recipientId String
-  type        String // CONNECTION_REQUEST, CONNECTION_ACCEPTED, NEW_MESSAGE, NEW_LOVE_NOTE, NEW_SECRET_MESSAGE, CHALLENGE_RECEIVED, MEMORY_SHARED
-  title       String
-  body        String?  @db.Text
-  data        String?  @db.Text // JSON blob with related IDs
-  isRead      Boolean  @default(false)
-  createdAt   DateTime @default(now())
+  id             String   @id @default(uuid())
+  recipientId    String
+  senderId       String? // who triggered it, when there is a specific person (Miss You, messages, etc.)
+  type           String // CONNECTION_REQUEST, CONNECTION_ACCEPTED, NEW_MESSAGE, NEW_LOVE_NOTE, READ_THIS_WHEN, NEW_SECRET_MESSAGE, CHALLENGE_RECEIVED, GAME_INVITE, DAILY_ANSWER_SHARED, NEW_QUESTION, QUESTION_ANSWERED, MISS_YOU, WAITING_FOR_REPLY
+  title          String
+  body           String?  @db.Text
+  conversationId String?
+  messageId      String?
+  data           String?  @db.Text // JSON blob with any other related IDs
+  isRead         Boolean  @default(false)
+  createdAt      DateTime @default(now())
 
-  recipient User @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  recipient  User                   @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  sender     User?                  @relation("NotificationSender", fields: [senderId], references: [id], onDelete: Cascade)
+  deliveries NotificationDelivery[]
 
   @@index([recipientId, isRead])
+  @@index([senderId])
+  @@index([conversationId])
+  @@index([type, createdAt])
+}
+
+// Per-channel delivery tracking for a Notification — makes it possible to
+// debug why an email/WhatsApp send did or didn't go out, without exposing
+// any of this to end users (see privacy rules in questions.controller.js-
+// style docs: never reveal delivery failures to the recipient/sender).
+model NotificationDelivery {
+  id                String    @id @default(uuid())
+  notificationId    String
+  channel           String // IN_APP | EMAIL | WHATSAPP
+  status            String    @default("PENDING") // PENDING | SENT | DELIVERED | FAILED | SKIPPED
+  provider          String?
+  providerMessageId String?
+  failureReason     String?   @db.Text
+  attemptedAt       DateTime  @default(now())
+  deliveredAt       DateTime?
+
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@index([notificationId])
+  @@index([channel, status])
+}
+
+// One row per "waiting for reply" reminder actually sent (manual tap or the
+// background scheduler) — enforces both cooldown rules: at most one reminder
+// per unanswered message (unique messageId) and at most one reminder to the
+// same recipient within WAITING_REPLY_COOLDOWN_HOURS (query by recipientId).
+model ReminderSent {
+  id             String   @id @default(uuid())
+  messageId      String   @unique
+  conversationId String
+  senderId       String
+  recipientId    String
+  createdAt      DateTime @default(now())
+
+  @@index([recipientId, createdAt])
+  @@index([senderId])
 }

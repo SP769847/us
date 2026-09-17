@@ -19,6 +19,24 @@ export default function MessageBubble({ message, isMine, myId, peer, onReact, on
     reactionCounts[r.emoji] = (reactionCounts[r.emoji] || 0) + 1;
   });
 
+  if (message.type === 'MISS_YOU') {
+    // A subtle system-style event, not a normal chat bubble — no reactions,
+    // reply, pin, or delete toolbar.
+    const name = isMine ? 'You' : message.sender?.fullName || peer?.fullName || 'They';
+    return (
+      <div className="flex flex-col items-center gap-1 py-1">
+        <div className="flex items-center gap-2 text-xs text-white/50 bg-white/[0.04] border border-white/10 rounded-full px-4 py-1.5 max-w-[90%] text-center">
+          <span>❤️</span>
+          <span className="truncate">
+            {name} {isMine ? 'sent a "Missing you"' : 'misses you'}
+            {message.content && !isMine ? ` — "${message.content}"` : ''}
+          </span>
+        </div>
+        <span className="text-[10px] text-white/25">{formatTime(message.createdAt)}</span>
+      </div>
+    );
+  }
+
   if (message.type === 'QUESTION') {
     return (
       <div className={`flex w-full ${isMine ? 'justify-end' : 'justify-start'}`}>

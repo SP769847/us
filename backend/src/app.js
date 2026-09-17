@@ -28,6 +28,8 @@ import notificationsRoutes from './routes/notifications.routes.js';
 import surpriseRoutes from './routes/surprise.routes.js';
 import dashboardRoutes from './routes/dashboard.routes.js';
 import adminRoutes from './routes/admin.routes.js';
+import missYouRoutes from './routes/missYou.routes.js';
+import waitingReplyRoutes from './routes/waitingReply.routes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -65,6 +67,8 @@ app.use('/api/notifications', notificationsRoutes);
 app.use('/api/surprise-me', surpriseRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/miss-you', missYouRoutes);
+app.use('/api/waiting-reply', waitingReplyRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

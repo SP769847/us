@@ -9,6 +9,7 @@ import Avatar from '../components/ui/Avatar.jsx';
 const SECTIONS = [
   { id: 'profile', label: 'Profile' },
   { id: 'security', label: 'Security' },
+  { id: 'notifications', label: 'Notifications' },
   { id: 'privacy', label: 'Privacy' },
   { id: 'danger', label: 'Delete Account' },
 ];
@@ -166,6 +167,157 @@ function PrivacySection() {
   );
 }
 
+const TYPE_LABELS = {
+  NEW_MESSAGE: 'New messages',
+  CONNECTION_REQUEST: 'Connection requests',
+  CONNECTION_ACCEPTED: 'Connection accepted',
+  MISS_YOU: 'I Miss You',
+  WAITING_FOR_REPLY: 'Waiting-for-reply reminders',
+  NEW_LOVE_NOTE: 'Love notes',
+  CHALLENGE_RECEIVED: 'Challenges',
+  NEW_QUESTION: 'Surprise questions',
+};
+const IN_APP_TYPES = ['NEW_MESSAGE', 'CONNECTION_REQUEST', 'CONNECTION_ACCEPTED', 'MISS_YOU', 'WAITING_FOR_REPLY', 'NEW_LOVE_NOTE', 'CHALLENGE_RECEIVED', 'NEW_QUESTION'];
+const EMAIL_TYPES = ['MISS_YOU', 'WAITING_FOR_REPLY', 'NEW_MESSAGE', 'CONNECTION_REQUEST'];
+const WHATSAPP_TYPES = ['MISS_YOU', 'WAITING_FOR_REPLY', 'CONNECTION_REQUEST'];
+
+function PreferenceGroup({ title, types, values, onToggle }) {
+  return (
+    <div>
+      <h4 className="text-xs font-semibold uppercase tracking-wider text-white/40 mb-2.5">{title}</h4>
+      <div className="space-y-2">
+        {types.map((type) => (
+          <label key={type} className="flex items-center gap-2.5 text-sm text-white/75 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={values?.[type] ?? false}
+              onChange={() => onToggle(type, !values?.[type])}
+              className="accent-blush-500"
+            />
+            {TYPE_LABELS[type] || type}
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function NotificationsSection() {
+  const { user, setUser } = useAuth();
+  const [prefs, setPrefs] = useState(null);
+  const [phone, setPhone] = useState('');
+  const [otp, setOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [waMsg, setWaMsg] = useState({ text: '', isError: false });
+  const [waLoading, setWaLoading] = useState(false);
+
+  useEffect(() => {
+    api.get('/notifications/preferences').then((res) => setPrefs(res.data.preferences));
+  }, []);
+
+  const toggle = async (channel, type, value) => {
+    const updated = { ...prefs, [channel]: { ...prefs[channel], [type]: value } };
+    setPrefs(updated);
+    try {
+      await api.patch('/notifications/preferences', { [channel]: { [type]: value } });
+    } catch {
+      setPrefs(prefs); // revert on failure
+    }
+  };
+
+  const sendOtp = async (e) => {
+    e.preventDefault();
+    setWaLoading(true);
+    setWaMsg({ text: '', isError: false });
+    try {
+      await api.post('/users/me/whatsapp/send-otp', { phoneNumber: phone });
+      setOtpSent(true);
+      setWaMsg({ text: 'Verification code sent', isError: false });
+    } catch (err) {
+      setWaMsg({ text: extractErrorMessage(err), isError: true });
+    } finally {
+      setWaLoading(false);
+    }
+  };
+
+  const verifyOtp = async (e) => {
+    e.preventDefault();
+    setWaLoading(true);
+    setWaMsg({ text: '', isError: false });
+    try {
+      const { data } = await api.post('/users/me/whatsapp/verify-otp', { code: otp });
+      setUser(data.user);
+      setOtpSent(false);
+      setOtp('');
+      setWaMsg({ text: 'WhatsApp number verified', isError: false });
+    } catch (err) {
+      setWaMsg({ text: extractErrorMessage(err), isError: true });
+    } finally {
+      setWaLoading(false);
+    }
+  };
+
+  const disableWhatsapp = async () => {
+    setWaLoading(true);
+    try {
+      const { data } = await api.post('/users/me/whatsapp/disable');
+      setUser(data.user);
+      setPhone('');
+      setWaMsg({ text: 'WhatsApp notifications disabled', isError: false });
+    } finally {
+      setWaLoading(false);
+    }
+  };
+
+  if (!prefs) return <p className="text-xs text-white/35">Loading…</p>;
+
+  return (
+    <div className="space-y-8">
+      <PreferenceGroup title="In-App" types={IN_APP_TYPES} values={prefs.inApp} onToggle={(t, v) => toggle('inApp', t, v)} />
+      <PreferenceGroup title="Email" types={EMAIL_TYPES} values={prefs.email} onToggle={(t, v) => toggle('email', t, v)} />
+      <PreferenceGroup title="WhatsApp" types={WHATSAPP_TYPES} values={prefs.whatsapp} onToggle={(t, v) => toggle('whatsapp', t, v)} />
+
+      <div className="pt-6 border-t border-white/5">
+        <h4 className="text-xs font-semibold uppercase tracking-wider text-white/40 mb-3">WhatsApp Number</h4>
+        {user.whatsappVerified ? (
+          <div className="flex items-center justify-between bg-white/5 rounded-xl px-4 py-3">
+            <div>
+              <p className="text-sm text-white/80">{user.whatsappNumber}</p>
+              <p className="text-xs text-emerald-300 mt-0.5">✓ Verified</p>
+            </div>
+            <Button size="sm" variant="ghost" onClick={disableWhatsapp} disabled={waLoading}>
+              Remove
+            </Button>
+          </div>
+        ) : (
+          <form onSubmit={otpSent ? verifyOtp : sendOtp} className="space-y-3 max-w-xs">
+            <Input
+              label="Phone number"
+              placeholder="+919876543210"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              disabled={otpSent}
+              required
+            />
+            {otpSent && (
+              <Input label="Verification code" placeholder="123456" value={otp} onChange={(e) => setOtp(e.target.value)} required />
+            )}
+            <Button type="submit" size="sm" loading={waLoading}>
+              {otpSent ? 'Verify' : 'Send OTP'}
+            </Button>
+            {otpSent && (
+              <button type="button" onClick={() => setOtpSent(false)} className="ml-2 text-xs text-white/40 hover:text-white/70">
+                Change number
+              </button>
+            )}
+            <Feedback {...waMsg} />
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function DangerSection() {
   const { logout } = useAuth();
   const navigate = useNavigate();
@@ -242,6 +394,7 @@ export default function Settings() {
       <div className="glass rounded-2xl p-6">
         {section === 'profile' && <ProfileSection />}
         {section === 'security' && <SecuritySection />}
+        {section === 'notifications' && <NotificationsSection />}
         {section === 'privacy' && <PrivacySection />}
         {section === 'danger' && <DangerSection />}
       </div>

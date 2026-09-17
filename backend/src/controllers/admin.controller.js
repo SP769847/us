@@ -15,16 +15,44 @@ export const getStats = asyncHandler(async (req, res) => {
   const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-  const [totalUsers, activeUsers, newUsers, totalConnections, totalMessages, pendingReports] = await Promise.all([
+  const [
+    totalUsers,
+    activeUsers,
+    newUsers,
+    totalConnections,
+    totalMessages,
+    pendingReports,
+    missYouSent,
+    waitingRemindersSent,
+    notificationsByType,
+    deliveriesByChannelAndStatus,
+  ] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { isOnline: true } }),
     prisma.user.count({ where: { createdAt: { gt: weekAgo } } }),
     prisma.connection.count(),
     prisma.message.count(),
     prisma.report.count({ where: { status: 'PENDING' } }),
+    prisma.notification.count({ where: { type: 'MISS_YOU' } }),
+    prisma.reminderSent.count(),
+    prisma.notification.groupBy({ by: ['type'], _count: { _all: true } }),
+    prisma.notificationDelivery.groupBy({ by: ['channel', 'status'], _count: { _all: true } }),
   ]);
 
-  res.json({ totalUsers, activeUsers, newUsers, totalConnections, totalMessages, pendingReports });
+  // Aggregate counts only — never individual notification content, and
+  // never which specific user triggered/received what.
+  res.json({
+    totalUsers,
+    activeUsers,
+    newUsers,
+    totalConnections,
+    totalMessages,
+    pendingReports,
+    missYouSent,
+    waitingRemindersSent,
+    notificationsByType: Object.fromEntries(notificationsByType.map((n) => [n.type, n._count._all])),
+    deliveries: deliveriesByChannelAndStatus.map((d) => ({ channel: d.channel, status: d.status, count: d._count._all })),
+  });
 });
 
 export const listUsers = asyncHandler(async (req, res) => {

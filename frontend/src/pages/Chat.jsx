@@ -32,6 +32,8 @@ export default function Chat() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [error, setError] = useState('');
+  const [waitingStatus, setWaitingStatus] = useState(null);
+  const [reminding, setReminding] = useState(false);
 
   const scrollRef = useRef(null);
   const bottomRef = useRef(null);
@@ -47,6 +49,16 @@ export default function Chat() {
   useEffect(() => {
     loadConversations();
   }, [loadConversations]);
+
+  const loadWaitingStatus = useCallback(async (cid) => {
+    if (!cid) return setWaitingStatus(null);
+    try {
+      const { data } = await api.get(`/waiting-reply/${cid}`);
+      setWaitingStatus(data.waiting ? data : null);
+    } catch {
+      setWaitingStatus(null);
+    }
+  }, []);
 
   useEffect(() => {
     if (!conversationId) {
@@ -71,6 +83,7 @@ export default function Chat() {
         setNextCursor(msgs.nextCursor);
         await api.post(`/conversations/${conversationId}/read`);
         loadConversations();
+        loadWaitingStatus(conversationId);
         getSocket()?.emit('join-conversation', { conversationId });
         requestAnimationFrame(() => bottomRef.current?.scrollIntoView());
       } catch (err) {
@@ -83,7 +96,7 @@ export default function Chat() {
     return () => {
       cancelled = true;
     };
-  }, [conversationId, loadConversations]);
+  }, [conversationId, loadConversations, loadWaitingStatus]);
 
   useEffect(() => {
     const socket = getSocket();
@@ -94,6 +107,7 @@ export default function Chat() {
         setMessages((prev) => [...prev, msg]);
         api.post(`/conversations/${conversationId}/read`).catch(() => {});
         requestAnimationFrame(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }));
+        loadWaitingStatus(conversationId);
       }
       loadConversations();
     };
@@ -151,7 +165,7 @@ export default function Chat() {
       socket.off('user-online', onOnline);
       socket.off('user-offline', onOffline);
     };
-  }, [conversationId, loadConversations]);
+  }, [conversationId, loadConversations, loadWaitingStatus]);
 
   const loadOlder = async () => {
     if (!nextCursor || loadingOlder.current) return;
@@ -210,6 +224,18 @@ export default function Chat() {
 
   const skipQuestion = async (sentQuestionId) => {
     await api.post(`/questions/${sentQuestionId}/skip`);
+  };
+
+  const remindPartner = async () => {
+    setReminding(true);
+    try {
+      await api.post(`/waiting-reply/${conversationId}/remind`);
+      setWaitingStatus((s) => (s ? { ...s, canRemind: false } : s));
+    } catch {
+      // friendly no-op — cooldown/already-reminded errors aren't worth surfacing loudly here
+    } finally {
+      setReminding(false);
+    }
   };
 
   const openPinned = async () => {
@@ -307,7 +333,20 @@ export default function Chat() {
               <div ref={bottomRef} />
             </div>
 
-            <Composer onSend={send} onTyping={onTyping} replyTo={replyTo} onCancelReply={() => setReplyTo(null)} conversationId={conversationId} />
+            {waitingStatus?.waiting && (
+              <div className="shrink-0 flex items-center justify-between gap-3 px-4 py-2.5 border-t border-white/5 bg-white/[0.03]">
+                <p className="text-xs text-white/45 truncate">💭 Waiting for {peer?.fullName || 'their'} reply…</p>
+                <button
+                  onClick={remindPartner}
+                  disabled={!waitingStatus.canRemind || reminding}
+                  className="shrink-0 text-xs font-medium text-blush-300 hover:text-blush-200 disabled:opacity-40 disabled:hover:text-blush-300 transition-colors"
+                >
+                  {waitingStatus.canRemind ? '🔔 Remind them' : 'Reminded ✓'}
+                </button>
+              </div>
+            )}
+
+            <Composer onSend={send} onTyping={onTyping} replyTo={replyTo} onCancelReply={() => setReplyTo(null)} conversationId={conversationId} peer={peer} />
           </>
         )}
       </div>
@@ -321,7 +360,13 @@ export default function Chat() {
               <div key={p.pinId} className="bg-white/5 rounded-xl p-3">
                 <p className="text-xs text-white/40 mb-1">{p.message.sender.fullName}</p>
                 <p className="text-sm text-white/80">
-                  {p.message.type === 'IMAGE' ? '📷 Photo' : p.message.type === 'QUESTION' ? '✨ A surprise question' : p.message.content}
+                  {p.message.type === 'IMAGE'
+                    ? '📷 Photo'
+                    : p.message.type === 'QUESTION'
+                    ? '✨ A surprise question'
+                    : p.message.type === 'MISS_YOU'
+                    ? '❤️ Miss you'
+                    : p.message.content}
                 </p>
               </div>
             ))}

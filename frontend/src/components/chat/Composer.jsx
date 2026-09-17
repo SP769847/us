@@ -1,12 +1,15 @@
 import { useRef, useState } from 'react';
 import SurpriseSheet from '../questions/SurpriseSheet.jsx';
+import MissYouModal from './MissYouModal.jsx';
 
 const QUICK_EMOJI = ['❤️', '😂', '🥰', '😮', '😢', '👍', '🔥', '✨'];
 
-export default function Composer({ onSend, onTyping, replyTo, onCancelReply, conversationId }) {
+export default function Composer({ onSend, onTyping, replyTo, onCancelReply, conversationId, peer }) {
   const [text, setText] = useState('');
   const [showEmoji, setShowEmoji] = useState(false);
+  const [showPlusMenu, setShowPlusMenu] = useState(false);
   const [surpriseOpen, setSurpriseOpen] = useState(false);
+  const [missYouOpen, setMissYouOpen] = useState(false);
   const fileRef = useRef(null);
   const typingTimeout = useRef(null);
 
@@ -45,7 +48,7 @@ export default function Composer({ onSend, onTyping, replyTo, onCancelReply, con
       )}
       <form onSubmit={submit} className="flex items-end gap-1.5 sm:gap-2 relative">
         {showEmoji && (
-          <div className="absolute bottom-full mb-2 left-0 bg-ink-900 border border-white/10 rounded-2xl p-2 flex gap-1 shadow-soft">
+          <div className="absolute bottom-full mb-2 left-0 bg-ink-900 border border-white/10 rounded-2xl p-2 flex gap-1 shadow-soft z-10">
             {QUICK_EMOJI.map((e) => (
               <button
                 key={e}
@@ -61,13 +64,39 @@ export default function Composer({ onSend, onTyping, replyTo, onCancelReply, con
             ))}
           </div>
         )}
+
+        {showPlusMenu && (
+          <div className="absolute bottom-full mb-2 left-0 bg-ink-900 border border-white/10 rounded-2xl py-1.5 min-w-[150px] shadow-soft z-10">
+            <button
+              type="button"
+              onClick={() => {
+                setShowPlusMenu(false);
+                fileRef.current?.click();
+              }}
+              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-white/80 hover:bg-white/8 transition-colors"
+            >
+              📎 Photo
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowPlusMenu(false);
+                setShowEmoji(true);
+              }}
+              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-white/80 hover:bg-white/8 transition-colors"
+            >
+              😊 Emoji
+            </button>
+          </div>
+        )}
+
         <button
           type="button"
-          onClick={() => fileRef.current?.click()}
-          className="w-10 h-10 shrink-0 rounded-full flex items-center justify-center text-white/50 hover:text-white hover:bg-white/8 transition-colors"
-          aria-label="Attach image"
+          onClick={() => setShowPlusMenu((v) => !v)}
+          className="w-10 h-10 shrink-0 rounded-full flex items-center justify-center text-white/50 hover:text-white hover:bg-white/8 transition-colors text-lg"
+          aria-label="More options"
         >
-          📎
+          +
         </button>
         <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onFile} />
         <button
@@ -81,11 +110,12 @@ export default function Composer({ onSend, onTyping, replyTo, onCancelReply, con
         </button>
         <button
           type="button"
-          onClick={() => setShowEmoji((v) => !v)}
+          onClick={() => setMissYouOpen(true)}
           className="w-10 h-10 shrink-0 rounded-full flex items-center justify-center text-white/50 hover:text-white hover:bg-white/8 transition-colors"
-          aria-label="Emoji"
+          aria-label="I miss you"
+          title="I Miss You"
         >
-          😊
+          🥺
         </button>
         <textarea
           rows={1}
@@ -108,6 +138,7 @@ export default function Composer({ onSend, onTyping, replyTo, onCancelReply, con
       </form>
 
       <SurpriseSheet open={surpriseOpen} onClose={() => setSurpriseOpen(false)} conversationId={conversationId} />
+      <MissYouModal open={missYouOpen} onClose={() => setMissYouOpen(false)} conversationId={conversationId} peerName={peer?.fullName} />
     </div>
   );
 }

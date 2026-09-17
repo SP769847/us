@@ -6,6 +6,9 @@ import { publicUser, privateUser } from '../utils/serializers.js';
 import { sanitizeText, isStrongPassword } from '../utils/validators.js';
 import { findConnectionBetween, isBlockedEitherWay } from '../services/connectionService.js';
 import { fileUrl } from '../utils/upload.js';
+import { isWhatsAppConfigured, sendOtpMessage } from '../services/notifications/whatsappProvider.js';
+
+const PHONE_RE = /^\+[1-9]\d{6,14}$/; // E.164, e.g. +919876543210
 
 export const discoverUsers = asyncHandler(async (req, res) => {
   const q = sanitizeText(req.query.q || '', 50);
@@ -130,6 +133,67 @@ export const changePassword = asyncHandler(async (req, res) => {
   const passwordHash = await bcrypt.hash(newPassword, 12);
   await prisma.user.update({ where: { id: req.user.id }, data: { passwordHash } });
   res.json({ message: 'Password updated successfully' });
+});
+
+// WhatsApp opt-in requires verifying the number before notifications can be
+// enabled — never send unsolicited WhatsApp messages, per the platform's
+// policies and this app's own consent requirement.
+export const sendWhatsappOtp = asyncHandler(async (req, res) => {
+  const { phoneNumber } = req.body;
+  if (!phoneNumber || !PHONE_RE.test(phoneNumber)) {
+    throw new ApiError(400, 'Enter a valid phone number in international format, e.g. +919876543210');
+  }
+  if (!isWhatsAppConfigured()) {
+    throw new ApiError(503, 'WhatsApp notifications are not available yet. Please try again later.');
+  }
+
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  const otpHash = await bcrypt.hash(code, 10);
+
+  await prisma.user.update({
+    where: { id: req.user.id },
+    data: {
+      whatsappNumber: phoneNumber,
+      whatsappVerified: false,
+      whatsappOtpHash: otpHash,
+      whatsappOtpExpiresAt: new Date(Date.now() + 10 * 60 * 1000),
+    },
+  });
+
+  const result = await sendOtpMessage({ to: phoneNumber, code });
+  if (!result.success) {
+    throw new ApiError(502, 'Could not send the verification code right now. Please try again.');
+  }
+
+  res.json({ message: 'Verification code sent' });
+});
+
+export const verifyWhatsappOtp = asyncHandler(async (req, res) => {
+  const { code } = req.body;
+  if (!code) throw new ApiError(400, 'Enter the verification code');
+
+  const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+  if (!user.whatsappOtpHash || !user.whatsappOtpExpiresAt || user.whatsappOtpExpiresAt < new Date()) {
+    throw new ApiError(400, 'Your verification code has expired. Please request a new one.');
+  }
+
+  const valid = await bcrypt.compare(String(code), user.whatsappOtpHash);
+  if (!valid) throw new ApiError(400, 'Incorrect verification code');
+
+  const updated = await prisma.user.update({
+    where: { id: req.user.id },
+    data: { whatsappVerified: true, whatsappOtpHash: null, whatsappOtpExpiresAt: null },
+  });
+
+  res.json({ user: privateUser(updated) });
+});
+
+export const disableWhatsapp = asyncHandler(async (req, res) => {
+  const updated = await prisma.user.update({
+    where: { id: req.user.id },
+    data: { whatsappNumber: null, whatsappVerified: false, whatsappOtpHash: null, whatsappOtpExpiresAt: null },
+  });
+  res.json({ user: privateUser(updated) });
 });
 
 export const deleteAccount = asyncHandler(async (req, res) => {

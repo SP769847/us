@@ -1,24 +1,7 @@
-import prisma from '../config/prisma.js';
-import { getIO } from '../sockets/index.js';
-
-export async function createNotification({ recipientId, type, title, body, data }) {
-  const notification = await prisma.notification.create({
-    data: {
-      recipientId,
-      type,
-      title,
-      body: body || null,
-      data: data ? JSON.stringify(data) : null,
-    },
-  });
-
-  const io = getIO();
-  if (io) {
-    io.to(`user:${recipientId}`).emit('notification', {
-      ...notification,
-      data: data || null,
-    });
-  }
-
-  return notification;
-}
+// Thin re-export for backward compatibility — the real implementation now
+// lives in services/notifications/index.js (the NotificationService), which
+// additionally fans out to Email/WhatsApp based on recipient preferences.
+// Every existing call site (connections, messages, love notes, challenges,
+// games, daily questions, secret messages, surprise questions) keeps working
+// unchanged since the signature is a strict superset of the original.
+export { createNotification } from './notifications/index.js';
