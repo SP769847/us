@@ -10,6 +10,15 @@ html, body, #root {
   height: 100%;
 }
 
+/* Mobile-safe viewport height: falls back to 100vh on browsers that don't
+   support dvh, but avoids the classic mobile bug where 100vh is taller than
+   the visible area behind the browser chrome (which used to push the chat
+   composer off-screen). */
+.app-shell {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
 body {
   @apply bg-ink-950 text-white/90 antialiased;
   font-family: 'Inter', system-ui, sans-serif;

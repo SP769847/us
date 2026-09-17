@@ -1,10 +1,12 @@
 import { useRef, useState } from 'react';
+import SurpriseSheet from '../questions/SurpriseSheet.jsx';
 
 const QUICK_EMOJI = ['❤️', '😂', '🥰', '😮', '😢', '👍', '🔥', '✨'];
 
-export default function Composer({ onSend, onTyping, replyTo, onCancelReply }) {
+export default function Composer({ onSend, onTyping, replyTo, onCancelReply, conversationId }) {
   const [text, setText] = useState('');
   const [showEmoji, setShowEmoji] = useState(false);
+  const [surpriseOpen, setSurpriseOpen] = useState(false);
   const fileRef = useRef(null);
   const typingTimeout = useRef(null);
 
@@ -32,7 +34,7 @@ export default function Composer({ onSend, onTyping, replyTo, onCancelReply }) {
   };
 
   return (
-    <div className="border-t border-white/5 p-3 sm:p-4 shrink-0">
+    <div className="border-t border-white/5 px-3 sm:px-4 pt-3 sm:pt-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] sm:pb-[calc(1rem+env(safe-area-inset-bottom))] shrink-0">
       {replyTo && (
         <div className="flex items-center justify-between bg-white/5 rounded-xl px-3 py-2 mb-2 text-xs text-white/50">
           <span className="truncate">Replying to: {replyTo.content?.slice(0, 60) || 'a photo'}</span>
@@ -41,7 +43,7 @@ export default function Composer({ onSend, onTyping, replyTo, onCancelReply }) {
           </button>
         </div>
       )}
-      <form onSubmit={submit} className="flex items-end gap-2 relative">
+      <form onSubmit={submit} className="flex items-end gap-1.5 sm:gap-2 relative">
         {showEmoji && (
           <div className="absolute bottom-full mb-2 left-0 bg-ink-900 border border-white/10 rounded-2xl p-2 flex gap-1 shadow-soft">
             {QUICK_EMOJI.map((e) => (
@@ -70,6 +72,15 @@ export default function Composer({ onSend, onTyping, replyTo, onCancelReply }) {
         <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onFile} />
         <button
           type="button"
+          onClick={() => setSurpriseOpen(true)}
+          className="w-10 h-10 shrink-0 rounded-full flex items-center justify-center text-white/50 hover:text-white hover:bg-white/8 transition-colors"
+          aria-label="Surprise question"
+          title="Surprise Me"
+        >
+          ✨
+        </button>
+        <button
+          type="button"
           onClick={() => setShowEmoji((v) => !v)}
           className="w-10 h-10 shrink-0 rounded-full flex items-center justify-center text-white/50 hover:text-white hover:bg-white/8 transition-colors"
           aria-label="Emoji"
@@ -84,7 +95,7 @@ export default function Composer({ onSend, onTyping, replyTo, onCancelReply }) {
             if (e.key === 'Enter' && !e.shiftKey) submit(e);
           }}
           placeholder="Write something sweet…"
-          className="flex-1 bg-white/5 border border-white/10 rounded-2xl px-4 py-2.5 text-sm resize-none outline-none focus:border-blush-400/50 max-h-32"
+          className="flex-1 min-w-0 bg-white/5 border border-white/10 rounded-2xl px-3 sm:px-4 py-2.5 text-sm resize-none outline-none focus:border-blush-400/50 max-h-32"
         />
         <button
           type="submit"
@@ -95,6 +106,8 @@ export default function Composer({ onSend, onTyping, replyTo, onCancelReply }) {
           ➤
         </button>
       </form>
+
+      <SurpriseSheet open={surpriseOpen} onClose={() => setSurpriseOpen(false)} conversationId={conversationId} />
     </div>
   );
 }

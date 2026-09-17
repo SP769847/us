@@ -81,6 +81,10 @@ export default function Dashboard() {
             <p className="text-xs text-white/35 mt-1">waiting to be opened</p>
           </Card>
 
+          <Card to="/questions" icon="✨" title="Surprise Questions">
+            <p className="text-xs text-white/50">Romantic, cute, funny, deep, or naughty 18+ — send one to spark a conversation.</p>
+          </Card>
+
           <Card to="/games" icon="🎲" title="Today's Game">
             <p className="text-xs text-white/50">Start a round of This or That, Would You Rather, or Truth or Dare.</p>
           </Card>

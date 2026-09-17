@@ -19,6 +19,7 @@ import LoveNotes from './pages/LoveNotes.jsx';
 import ReadThisWhen from './pages/ReadThisWhen.jsx';
 import SecretMessages from './pages/SecretMessages.jsx';
 import DailyQuestion from './pages/DailyQuestion.jsx';
+import Questions from './pages/Questions.jsx';
 import Challenges from './pages/Challenges.jsx';
 import Games from './pages/Games.jsx';
 import GameSession from './pages/GameSession.jsx';
@@ -59,6 +60,7 @@ export default function App() {
             <Route path="/read-this-when" element={<ReadThisWhen />} />
             <Route path="/secret-messages" element={<SecretMessages />} />
             <Route path="/daily-question" element={<DailyQuestion />} />
+            <Route path="/questions" element={<Questions />} />
             <Route path="/challenges" element={<Challenges />} />
             <Route path="/games" element={<Games />} />
             <Route path="/games/:id" element={<GameSession />} />

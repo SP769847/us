@@ -108,6 +108,12 @@ export default function Chat() {
     const onPinChanged = ({ messageId, pinned: isPinned }) => {
       setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, isPinned } : m)));
     };
+    const onQuestionAnswered = ({ messageId, sentQuestion }) => {
+      setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, sentQuestion } : m)));
+    };
+    const onQuestionRevealed = ({ messageId, sentQuestion }) => {
+      setMessages((prev) => prev.map((m) => (m.id === messageId ? { ...m, sentQuestion } : m)));
+    };
     const onTypingStart = ({ conversationId: cid }) => {
       if (cid === conversationId) setTypingPeer(true);
     };
@@ -121,6 +127,8 @@ export default function Chat() {
     socket.on('message-deleted', onDeleted);
     socket.on('message-reaction', onReaction);
     socket.on('message-pin-changed', onPinChanged);
+    socket.on('question-answered', onQuestionAnswered);
+    socket.on('question-revealed', onQuestionRevealed);
     socket.on('typing-start', onTypingStart);
     socket.on('typing-stop', onTypingStop);
     socket.on('user-online', onOnline);
@@ -131,6 +139,8 @@ export default function Chat() {
       socket.off('message-deleted', onDeleted);
       socket.off('message-reaction', onReaction);
       socket.off('message-pin-changed', onPinChanged);
+      socket.off('question-answered', onQuestionAnswered);
+      socket.off('question-revealed', onQuestionRevealed);
       socket.off('typing-start', onTypingStart);
       socket.off('typing-stop', onTypingStop);
       socket.off('user-online', onOnline);
@@ -185,6 +195,14 @@ export default function Chat() {
     await api.post(`/messages/${messageId}/pin`);
   };
 
+  const answerQuestion = async (sentQuestionId, answer) => {
+    await api.post(`/questions/${sentQuestionId}/answer`, { answer });
+  };
+
+  const revealQuestion = async (sentQuestionId) => {
+    await api.post(`/questions/${sentQuestionId}/reveal`);
+  };
+
   const openPinned = async () => {
     const { data } = await api.get(`/conversations/${conversationId}/pinned`);
     setPinned(data.pinned);
@@ -203,7 +221,7 @@ export default function Chat() {
   const showList = !conversationId;
 
   return (
-    <div className="h-[calc(100vh-4rem)] md:h-full flex">
+    <div className="h-full flex overflow-hidden">
       <div className={`${showList ? 'flex' : 'hidden'} md:flex w-full md:w-80 border-r border-white/5 shrink-0`}>
         <ConversationList
           conversations={conversations}
@@ -264,10 +282,13 @@ export default function Chat() {
                         message={m}
                         isMine={m.senderId === user.id}
                         myId={user.id}
+                        peer={peer}
                         onReact={reactToMessage}
                         onDelete={deleteMessage}
                         onPin={togglePin}
                         onReply={setReplyTo}
+                        onAnswerQuestion={answerQuestion}
+                        onRevealQuestion={revealQuestion}
                       />
                     </motion.div>
                   ))}
@@ -276,7 +297,7 @@ export default function Chat() {
               <div ref={bottomRef} />
             </div>
 
-            <Composer onSend={send} onTyping={onTyping} replyTo={replyTo} onCancelReply={() => setReplyTo(null)} />
+            <Composer onSend={send} onTyping={onTyping} replyTo={replyTo} onCancelReply={() => setReplyTo(null)} conversationId={conversationId} />
           </>
         )}
       </div>
@@ -289,7 +310,9 @@ export default function Chat() {
             {pinned.map((p) => (
               <div key={p.pinId} className="bg-white/5 rounded-xl p-3">
                 <p className="text-xs text-white/40 mb-1">{p.message.sender.fullName}</p>
-                <p className="text-sm text-white/80">{p.message.type === 'IMAGE' ? '📷 Photo' : p.message.content}</p>
+                <p className="text-sm text-white/80">
+                  {p.message.type === 'IMAGE' ? '📷 Photo' : p.message.type === 'QUESTION' ? '✨ A surprise question' : p.message.content}
+                </p>
               </div>
             ))}
           </div>

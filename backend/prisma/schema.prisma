@@ -26,8 +26,10 @@ datasource db {
 //   User.role: "USER" | "ADMIN"
 //   User.status: "ACTIVE" | "SUSPENDED"
 //   ConnectionRequest.status: "PENDING" | "ACCEPTED" | "DECLINED"
-//   Message.type: "TEXT" | "IMAGE" | "EMOJI" | "SYSTEM"
+//   Message.type: "TEXT" | "IMAGE" | "EMOJI" | "SYSTEM" | "QUESTION"
 //   Report.status: "PENDING" | "RESOLVED" | "DISMISSED"
+//   Question.category / SentQuestion.category: "ROMANTIC" | "CUTE" | "FUNNY" | "DEEP" | "NAUGHTY_18" | "RANDOM"
+//   SentQuestion.mode: "SURPRISE" | "ASK_ME_ANYTHING"
 
 model User {
   id           String   @id @default(uuid())
@@ -61,6 +63,8 @@ model User {
   secretMessagesSent     SecretMessage[]      @relation("SecretSender")
   secretMessagesReceived SecretMessage[]      @relation("SecretRecipient")
   dailyQuestionAnswers   QuestionAnswer[]
+  sentQuestionsSent      SentQuestion[]       @relation("SentQuestionSender")
+  sentQuestionsReceived  SentQuestion[]       @relation("SentQuestionRecipient")
   challengesSent         Challenge[]          @relation("ChallengeSender")
   challengesReceived     Challenge[]          @relation("ChallengeRecipient")
   challengeResponses     ChallengeResponse[]
@@ -158,9 +162,10 @@ model Conversation {
   connectionId String   @unique
   createdAt    DateTime @default(now())
 
-  connection Connection           @relation(fields: [connectionId], references: [id], onDelete: Cascade)
-  members    ConversationMember[]
-  messages   Message[]
+  connection    Connection           @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  members       ConversationMember[]
+  messages      Message[]
+  sentQuestions SentQuestion[]
 }
 
 model ConversationMember {
@@ -195,6 +200,7 @@ model Message {
   replies      Message[]         @relation("MessageReplies")
   reactions    MessageReaction[]
   pins         MessagePin[]
+  sentQuestion SentQuestion?
 
   @@index([conversationId, createdAt])
   @@index([senderId])
@@ -287,6 +293,58 @@ model QuestionAnswer {
   @@index([questionId])
   @@index([userId])
   @@index([sharedWithUserId])
+}
+
+// Couple Questions bank (Romantic / Cute / Funny / Deep / Naughty 18+ / Random),
+// distinct from the single DailyQuestion-of-the-day feature above. Rows are
+// seeded from src/utils/contentBanks.js on server startup (see
+// src/utils/seedQuestions.js) so new questions can be added without touching
+// the frontend.
+model Question {
+  id            String   @id @default(uuid())
+  category      String
+  questionText  String   @db.VarChar(500)
+  ageRestricted Boolean  @default(false)
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  sentQuestions SentQuestion[]
+
+  @@unique([category, questionText])
+  @@index([category])
+}
+
+// A question (from the bank, or a custom "Ask Me Anything" prompt) sent by one
+// partner to the other inside a conversation. Always rendered as its own
+// special message card (Message.type = "QUESTION") rather than plain text.
+// Visible only to the sender and recipient — never surfaced in public
+// profiles, search, discover, or admin statistics.
+model SentQuestion {
+  id             String    @id @default(uuid())
+  questionId     String?
+  customText     String?   @db.Text
+  mode           String    @default("SURPRISE")
+  category       String?
+  conversationId String
+  messageId      String    @unique
+  senderId       String
+  recipientId    String
+  revealed       Boolean   @default(true)
+  answer         String?   @db.Text
+  answeredById   String?
+  answeredAt     DateTime?
+  createdAt      DateTime  @default(now())
+
+  question     Question?    @relation(fields: [questionId], references: [id], onDelete: SetNull)
+  message      Message      @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation("SentQuestionSender", fields: [senderId], references: [id], onDelete: Cascade)
+  recipient    User         @relation("SentQuestionRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@index([questionId])
+  @@index([conversationId])
+  @@index([senderId])
+  @@index([recipientId])
 }
 
 model Challenge {

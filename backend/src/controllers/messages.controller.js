@@ -7,7 +7,27 @@ import { createNotification } from '../services/notificationService.js';
 import { getIO } from '../sockets/index.js';
 import { sanitizeText } from '../utils/validators.js';
 
-function serializeMessage(msg) {
+export function serializeSentQuestion(sq, viewerId) {
+  if (!sq) return null;
+  const needsReveal = sq.mode === 'ASK_ME_ANYTHING' && !sq.revealed && viewerId !== sq.senderId;
+  return {
+    id: sq.id,
+    mode: sq.mode,
+    category: sq.category,
+    ageRestricted: sq.category === 'NAUGHTY_18',
+    questionText: needsReveal ? null : sq.customText || sq.question?.questionText || null,
+    needsReveal,
+    canReveal: needsReveal && viewerId === sq.recipientId,
+    canAnswer: !sq.answer && viewerId === sq.recipientId && !needsReveal,
+    answer: sq.answer,
+    answeredAt: sq.answeredAt,
+    answeredById: sq.answeredById,
+    senderId: sq.senderId,
+    recipientId: sq.recipientId,
+  };
+}
+
+function serializeMessage(msg, viewerId) {
   return {
     id: msg.id,
     conversationId: msg.conversationId,
@@ -25,14 +45,18 @@ function serializeMessage(msg) {
     senderId: msg.senderId,
     reactions: (msg.reactions || []).map((r) => ({ userId: r.userId, emoji: r.emoji })),
     isPinned: Boolean(msg.pins && msg.pins.length),
+    sentQuestion: msg.type === 'QUESTION' ? serializeSentQuestion(msg.sentQuestion, viewerId) : undefined,
   };
 }
 
-const MESSAGE_INCLUDE = {
+export { serializeMessage };
+
+export const MESSAGE_INCLUDE = {
   sender: true,
   replyTo: true,
   reactions: true,
   pins: true,
+  sentQuestion: { include: { question: true } },
 };
 
 export const listMessages = asyncHandler(async (req, res) => {
@@ -50,7 +74,7 @@ export const listMessages = asyncHandler(async (req, res) => {
   });
 
   res.json({
-    messages: messages.map(serializeMessage).reverse(),
+    messages: messages.map((m) => serializeMessage(m, req.user.id)).reverse(),
     nextCursor: messages.length === take ? messages[messages.length - 1].id : null,
   });
 });
@@ -93,7 +117,7 @@ export const sendMessage = asyncHandler(async (req, res) => {
     include: MESSAGE_INCLUDE,
   });
 
-  const serialized = serializeMessage(message);
+  const serialized = serializeMessage(message, req.user.id);
 
   const io = getIO();
   if (io) {

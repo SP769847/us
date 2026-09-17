@@ -51,6 +51,8 @@ export default function ConversationList({ conversations, activeId, onSelect, pr
                           ? 'Message deleted'
                           : c.lastMessage.type === 'IMAGE'
                           ? '📷 Photo'
+                          : c.lastMessage.type === 'QUESTION'
+                          ? '✨ Surprise question'
                           : c.lastMessage.content
                         : 'Say hello 👋'}
                     </p>

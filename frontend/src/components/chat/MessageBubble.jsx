@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { mediaUrl } from '../../utils/media.js';
+import SurpriseQuestionCard from './SurpriseQuestionCard.jsx';
 
 const REACTIONS = ['❤️', '😂', '🥰', '😮', '😢', '👍'];
 
@@ -8,7 +9,7 @@ function formatTime(date) {
   return new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
-export default function MessageBubble({ message, isMine, myId, onReact, onDelete, onPin, onReply }) {
+export default function MessageBubble({ message, isMine, myId, peer, onReact, onDelete, onPin, onReply, onAnswerQuestion, onRevealQuestion }) {
   const [showActions, setShowActions] = useState(false);
   const [showReactions, setShowReactions] = useState(false);
 
@@ -17,6 +18,26 @@ export default function MessageBubble({ message, isMine, myId, onReact, onDelete
   (message.reactions || []).forEach((r) => {
     reactionCounts[r.emoji] = (reactionCounts[r.emoji] || 0) + 1;
   });
+
+  if (message.type === 'QUESTION') {
+    return (
+      <div className={`flex w-full ${isMine ? 'justify-end' : 'justify-start'}`}>
+        <div className="w-full sm:w-auto sm:max-w-md min-w-0">
+          <SurpriseQuestionCard
+            sentQuestion={message.sentQuestion}
+            isMine={isMine}
+            myId={myId}
+            peer={peer}
+            onAnswer={onAnswerQuestion}
+            onReveal={onRevealQuestion}
+          />
+          <div className={`flex items-center gap-1.5 mt-1 px-1 ${isMine ? 'justify-end' : 'justify-start'}`}>
+            <span className="text-[10px] text-white/25">{formatTime(message.createdAt)}</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

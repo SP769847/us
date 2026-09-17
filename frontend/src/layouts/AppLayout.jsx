@@ -18,6 +18,7 @@ const NAV_TOGETHER = [
   { to: '/read-this-when', label: 'Read This When', icon: '📖' },
   { to: '/secret-messages', label: 'Secret Messages', icon: '🔐' },
   { to: '/daily-question', label: 'Daily Question', icon: '🥰' },
+  { to: '/questions', label: 'Surprise Questions', icon: '✨' },
   { to: '/challenges', label: 'Challenges', icon: '🔥' },
   { to: '/games', label: 'Games', icon: '🎲' },
   { to: '/memories', label: 'Memories', icon: '📸' },
@@ -83,9 +84,14 @@ export default function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const isChatRoute = location.pathname.startsWith('/chat');
+  // On mobile, an open conversation shows its own header (with a back
+  // button) inside Chat.jsx, so the app header can step aside. The bare
+  // conversation list has no such header of its own, so it must keep this
+  // one for the hamburger menu / notifications / avatar to stay reachable.
+  const isActiveConversation = /^\/chat\/[^/]+/.test(location.pathname);
 
   return (
-    <div className="min-h-screen bg-ink-950 bg-romantic-radial flex">
+    <div className="app-shell bg-ink-950 bg-romantic-radial flex">
       <aside className="hidden md:flex md:w-64 border-r border-white/5 flex-col shrink-0">
         <SidebarContent />
       </aside>
@@ -114,7 +120,7 @@ export default function AppLayout() {
       </AnimatePresence>
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className={`h-16 border-b border-white/5 flex items-center justify-between px-4 md:px-6 shrink-0 ${isChatRoute ? 'hidden md:flex' : 'flex'}`}>
+        <header className={`h-16 border-b border-white/5 flex items-center justify-between px-4 md:px-6 shrink-0 ${isActiveConversation ? 'hidden md:flex' : 'flex'}`}>
           <button className="md:hidden text-white/70 text-xl" onClick={() => setMobileOpen(true)}>
             ☰
           </button>
@@ -175,7 +181,7 @@ export default function AppLayout() {
           </div>
         </header>
 
-        <main className="flex-1 min-h-0 overflow-y-auto">
+        <main className={`flex-1 min-h-0 ${isChatRoute ? 'overflow-hidden' : 'overflow-y-auto'}`}>
           <Outlet />
         </main>
       </div>

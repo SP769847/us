@@ -13,6 +13,8 @@ const ICONS = {
   CHALLENGE_RECEIVED: '🔥',
   GAME_INVITE: '🎲',
   DAILY_ANSWER_SHARED: '🥰',
+  NEW_QUESTION: '✨',
+  QUESTION_ANSWERED: '💕',
 };
 
 export default function ToastHost() {
