@@ -120,7 +120,7 @@ export default function AppLayout() {
         )}
       </AnimatePresence>
 
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 min-h-0">
         <header className={`h-16 border-b border-white/5 flex items-center justify-between px-4 md:px-6 shrink-0 ${isActiveConversation ? 'hidden md:flex' : 'flex'}`}>
           <button className="md:hidden text-white/70 text-xl" onClick={() => setMobileOpen(true)}>
             ☰
